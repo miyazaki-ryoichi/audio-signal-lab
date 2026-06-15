@@ -971,9 +971,9 @@ function drawWindowResponse(window, info) {
   const response = getDtftDb(window, 1024);
   const rect = {
     left: width * 0.13,
-    top: height * 0.14,
+    top: height * 0.18,
     width: width * 0.78,
-    height: height * 0.68,
+    height: height * 0.64,
   };
   drawDbAxes(ctx, rect, "0 bin", "12 bins");
   drawDbCurve(ctx, response.slice(0, 260), rect, "#0b4f6c", -90, 0);
@@ -1005,12 +1005,18 @@ function drawLeakageSpectrum(window, strongBin, weakGap, weakLevelDb) {
 
   const weakBin = Math.min(window.length / 2 - 1, strongBin + weakGap);
   const weakAmp = 10 ** (weakLevelDb / 20);
+  const strongOnly = window.map((w, n) => {
+    const strongTone = Math.sin((2 * Math.PI * strongBin * n) / window.length);
+    return strongTone * w;
+  });
   const samples = window.map((w, n) => {
     const strongTone = Math.sin((2 * Math.PI * strongBin * n) / window.length);
     const weakTone = weakAmp * Math.sin((2 * Math.PI * weakBin * n) / window.length);
     return (strongTone + weakTone) * w;
   });
-  const spectrum = getDftDb(samples).slice(0, window.length / 2);
+  const scale = getDftMagnitudes(strongOnly).reduce((max, value) => Math.max(max, value), 1e-12);
+  const spectrum = magnitudesToDb(getDftMagnitudes(samples), scale).slice(0, window.length / 2);
+  const strongLeakage = magnitudesToDb(getDftMagnitudes(strongOnly), scale).slice(0, window.length / 2);
   const rect = {
     left: width * 0.13,
     top: height * 0.14,
@@ -1021,10 +1027,16 @@ function drawLeakageSpectrum(window, strongBin, weakGap, weakLevelDb) {
   drawSpectrumBars(ctx, spectrum, rect, -90, 0, strongBin, weakBin);
   drawToneMarker(ctx, rect, strongBin, spectrum.length, "strong", "#172121");
   drawToneMarker(ctx, rect, weakBin, spectrum.length, "weak", "#0b4f6c");
-  drawLeakageDecision(ctx, rect, spectrum, strongBin, weakBin, weakLevelDb);
+  drawLeakageDecision(ctx, rect, spectrum, strongLeakage, strongBin, weakBin, weakLevelDb);
 }
 
 function getDftDb(signal) {
+  const magnitudes = getDftMagnitudes(signal);
+  const maxValue = Math.max(...magnitudes, 1e-12);
+  return magnitudesToDb(magnitudes, maxValue);
+}
+
+function getDftMagnitudes(signal) {
   const magnitudes = [];
   const size = signal.length;
   for (let k = 0; k < size; k += 1) {
@@ -1037,8 +1049,11 @@ function getDftDb(signal) {
     }
     magnitudes.push(Math.sqrt(real * real + imag * imag));
   }
-  const maxValue = Math.max(...magnitudes, 1e-12);
-  return magnitudes.map((value) => 20 * Math.log10(Math.max(value / maxValue, 1e-8)));
+  return magnitudes;
+}
+
+function magnitudesToDb(magnitudes, reference) {
+  return magnitudes.map((value) => 20 * Math.log10(Math.max(value / reference, 1e-8)));
 }
 
 function drawDbAxes(ctx, rect, leftLabel, rightLabel) {
@@ -1139,7 +1154,7 @@ function drawToneMarker(ctx, rect, bin, binCount, label = "tone", color = "#1721
   ctx.fillText(`${label} ${bin.toFixed(2)}`, Math.min(x + 8, rect.left + rect.width - 120), rect.top + 26);
 }
 
-function drawLeakageDecision(ctx, rect, spectrum, strongBin, weakBin, weakLevelDb) {
+function drawLeakageDecision(ctx, rect, spectrum, strongLeakage, strongBin, weakBin, weakLevelDb) {
   const weakIndex = Math.max(0, Math.min(spectrum.length - 1, Math.round(weakBin)));
   const weakObserved = spectrum[weakIndex];
   const localLeakage = Math.max(
@@ -1149,20 +1164,46 @@ function drawLeakageDecision(ctx, rect, spectrum, strongBin, weakBin, weakLevelD
     spectrum[Math.min(spectrum.length - 1, weakIndex + 2)] ?? -90
   );
   const contrast = weakObserved - localLeakage;
-  const visible = contrast > 3 || Math.abs(weakBin - strongBin) > 5;
-  leakageReadout.textContent = visible ? "weak tone visible" : "weak tone masked";
-  leakageReadout.style.color = visible ? "#0f766e" : "#d95d39";
+  const localVisible = contrast > 3 || Math.abs(weakBin - strongBin) > 5;
+  const leakageFloor = strongLeakage[weakIndex];
+  const sourceMargin = weakObserved - leakageFloor;
+  const separatedVisible = sourceMargin > 6;
+  const visibleCount = Number(localVisible) + Number(separatedVisible);
+  leakageReadout.textContent = visibleCount === 2
+    ? "both visible"
+    : visibleCount === 1
+      ? "mixed"
+      : "masked";
+  leakageReadout.style.color = visibleCount === 2 ? "#0f766e" : visibleCount === 1 ? "#b7791f" : "#d95d39";
 
-  ctx.fillStyle = visible ? "#0f766e" : "#d95d39";
-  ctx.font = "800 20px system-ui";
-  ctx.fillText(
-    visible ? "weak tone separates from leakage" : "weak tone is buried in leakage",
+  drawDecisionBadge(
+    ctx,
     rect.left,
-    rect.top - 18
+    rect.top - 46,
+    "local peak",
+    localVisible,
+    `+${contrast.toFixed(1)} dB vs neighbors`
+  );
+  drawDecisionBadge(
+    ctx,
+    rect.left,
+    rect.top - 20,
+    "strong-only floor",
+    separatedVisible,
+    `+${sourceMargin.toFixed(1)} dB vs leakage`
   );
   ctx.fillStyle = "#5f6b66";
-  ctx.font = "700 18px system-ui";
-  ctx.fillText(`weak source level ${weakLevelDb} dB`, rect.left + rect.width - 190, rect.top - 18);
+  ctx.font = "700 17px system-ui";
+  ctx.fillText(`weak source ${weakLevelDb} dB`, rect.left + rect.width - 165, rect.top - 20);
+}
+
+function drawDecisionBadge(ctx, x, y, label, visible, detail) {
+  ctx.fillStyle = visible ? "#0f766e" : "#d95d39";
+  ctx.font = "800 17px system-ui";
+  ctx.fillText(`${label}: ${visible ? "visible" : "masked"}`, x, y);
+  ctx.fillStyle = "#5f6b66";
+  ctx.font = "700 16px system-ui";
+  ctx.fillText(detail, x + 178, y);
 }
 
 function mapDbToY(db, rect, minDb, maxDb) {
