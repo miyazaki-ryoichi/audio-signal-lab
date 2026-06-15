@@ -207,7 +207,8 @@ h2 {
 }
 
 .visual-grid,
-.lesson {
+.lesson,
+.lesson-stack {
   display: grid;
   gap: 16px;
   margin: 16px 0;
@@ -220,6 +221,10 @@ h2 {
 .lesson {
   grid-template-columns: minmax(0, 1.6fr) minmax(320px, 0.8fr);
   align-items: stretch;
+}
+
+.lesson-stack {
+  margin: 0;
 }
 
 .panel {
@@ -247,6 +252,10 @@ h2 {
   height: clamp(330px, 45vw, 520px);
 }
 
+.spectrogram-panel canvas {
+  height: clamp(250px, 32vw, 360px);
+}
+
 .lesson-controls {
   display: grid;
   gap: 1px;
@@ -270,6 +279,19 @@ h2 {
 
 .readout p {
   line-height: 1.55;
+}
+
+.sinc-toggle {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-weight: 750;
+}
+
+.sinc-toggle input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--hot);
 }
 
 canvas {

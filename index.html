@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Audio Signal Lab</title>
-    <link rel="stylesheet" href="styles.css?v=20260615-module-nav">
+    <link rel="stylesheet" href="styles.css?v=20260615-sinc-alias">
   </head>
   <body>
     <main class="app-shell">
@@ -117,16 +117,29 @@
 
         <section class="module-view" data-module="sampling">
           <section class="lesson" aria-label="Sampling theorem and waveform reconstruction">
-            <article class="panel sampling-panel">
-              <div class="panel-head">
-                <div>
-                  <h2>Sampling Theorem</h2>
-                  <p>サンプル点からsinc補間で波形を復元します。</p>
+            <div class="lesson-stack">
+              <article class="panel sampling-panel">
+                <div class="panel-head">
+                  <div>
+                    <h2>Sampling Theorem</h2>
+                    <p>サンプル点ごとのsinc関数を重ね合わせて波形を復元します。</p>
+                  </div>
+                  <span id="nyquistStatus">Nyquist OK</span>
                 </div>
-                <span id="nyquistStatus">Nyquist OK</span>
-              </div>
-              <canvas id="samplingCanvas" width="1400" height="520" aria-label="サンプリング定理と波形復元の表示"></canvas>
-            </article>
+                <canvas id="samplingCanvas" width="1400" height="520" aria-label="サンプリング定理と波形復元の表示"></canvas>
+              </article>
+
+              <article class="panel spectrogram-panel">
+                <div class="panel-head">
+                  <div>
+                    <h2>Aliasing Spectrogram</h2>
+                    <p>ナイキスト境界を超えた成分が低い周波数に折り返して観測されます。</p>
+                  </div>
+                  <span id="spectrogramStatus">Observed 440 Hz</span>
+                </div>
+                <canvas id="aliasCanvas" width="1400" height="420" aria-label="エイリアシングのスペクトログラム表示"></canvas>
+              </article>
+            </div>
 
             <aside class="lesson-controls">
               <article class="control-block sliders">
@@ -152,6 +165,10 @@
               </article>
 
               <article class="control-block readout">
+                <label class="sinc-toggle">
+                  <input id="showSinc" type="checkbox" checked>
+                  <span>Show sinc components</span>
+                </label>
                 <div>
                   <span class="metric-label">Nyquist frequency</span>
                   <strong id="nyquistFreq">800 Hz</strong>
@@ -167,6 +184,6 @@
         </section>
       </section>
     </main>
-    <script src="script.js?v=20260615-module-nav"></script>
+    <script src="script.js?v=20260615-sinc-alias"></script>
   </body>
 </html>

@@ -20,19 +20,22 @@ const filterButtons = [...document.querySelectorAll("[data-filter]")];
 const waveCanvas = document.querySelector("#waveCanvas");
 const spectrumCanvas = document.querySelector("#spectrumCanvas");
 const samplingCanvas = document.querySelector("#samplingCanvas");
+const aliasCanvas = document.querySelector("#aliasCanvas");
 const signalFreq = document.querySelector("#signalFreq");
 const lessonSampleRate = document.querySelector("#lessonSampleRate");
 const timeWindow = document.querySelector("#timeWindow");
+const showSinc = document.querySelector("#showSinc");
 const signalFreqValue = document.querySelector("#signalFreqValue");
 const lessonSampleRateValue = document.querySelector("#lessonSampleRateValue");
 const timeWindowValue = document.querySelector("#timeWindowValue");
 const nyquistStatus = document.querySelector("#nyquistStatus");
 const nyquistFreq = document.querySelector("#nyquistFreq");
 const aliasFreq = document.querySelector("#aliasFreq");
+const spectrogramStatus = document.querySelector("#spectrogramStatus");
 const samplingNote = document.querySelector("#samplingNote");
 const moduleButtons = [...document.querySelectorAll("[data-module-target]")];
 const moduleViews = [...document.querySelectorAll("[data-module]")];
-const canvases = [waveCanvas, spectrumCanvas, samplingCanvas];
+const canvases = [waveCanvas, spectrumCanvas, samplingCanvas, aliasCanvas];
 
 const state = {
   context: null,
@@ -236,20 +239,25 @@ function drawSamplingLesson() {
   });
 
   drawContinuousSignal(ctx, seconds, toX, toY, source, "#0b4f6c", 3);
+  if (showSinc.checked) {
+    drawSincComponents(ctx, samples, sampleRate, seconds, toX, toY);
+  }
   drawReconstructedSignal(ctx, samples, sampleRate, seconds, toX, toY, "#d95d39", 2.5);
   drawSamplePoints(ctx, samples, toX, toY);
   drawSamplingLabels(ctx, padding, plotWidth, height, seconds, sampleRate);
+  drawAliasSpectrogram();
 
   signalFreqValue.value = formatHz(freq);
   lessonSampleRateValue.value = formatHz(sampleRate);
   timeWindowValue.value = `${Math.round(seconds * 1000)} ms`;
   nyquistFreq.textContent = formatHz(nyquist);
   aliasFreq.textContent = formatHz(alias);
+  spectrogramStatus.textContent = `Observed ${formatHz(alias)}`;
   nyquistStatus.textContent = isNyquistOk ? "Nyquist OK" : "Aliasing";
   nyquistStatus.style.color = isNyquistOk ? "#0f766e" : "#d95d39";
   samplingNote.textContent = isNyquistOk
-    ? "サンプルレートが信号周波数の2倍を超えているため、赤いsinc復元波形は青い元波形に近づきます。"
-    : "ナイキスト周波数を超えています。サンプル点だけを見ると、別の低い周波数として観測されます。";
+    ? "薄い線が各サンプル点のsinc成分です。これらを足し合わせると、赤い復元波形が青い元波形に近づきます。"
+    : "ナイキスト周波数を超えています。サンプル点からは、下のスペクトログラムに出る低い周波数として観測されます。";
 }
 
 function drawAxis(ctx, padding, plotWidth, centerY, height) {
@@ -302,6 +310,30 @@ function drawReconstructedSignal(ctx, samples, sampleRate, seconds, toX, toY, co
   ctx.setLineDash([]);
 }
 
+function drawSincComponents(ctx, samples, sampleRate, seconds, toX, toY) {
+  const maxKernels = 23;
+  const stride = Math.max(1, Math.ceil(samples.length / maxKernels));
+  const steps = Math.min(900, Math.max(240, Math.floor(seconds * 18000)));
+
+  samples.forEach((sample, index) => {
+    if (index % stride !== 0) return;
+    const alpha = 0.08 + Math.min(0.18, Math.abs(sample.value) * 0.16);
+    ctx.strokeStyle = `rgba(217, 93, 57, ${alpha})`;
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+
+    for (let i = 0; i <= steps; i += 1) {
+      const time = (i / steps) * seconds;
+      const value = sample.value * sinc(time * sampleRate - index);
+      const x = toX(time);
+      const y = toY(value);
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  });
+}
+
 function drawSamplePoints(ctx, samples, toX, toY) {
   ctx.fillStyle = "#172121";
   ctx.strokeStyle = "rgba(23, 33, 33, 0.28)";
@@ -327,20 +359,146 @@ function drawSamplingLabels(ctx, padding, plotWidth, height, seconds, sampleRate
   ctx.fillStyle = "#0b4f6c";
   ctx.fillRect(padding.left + 120, padding.top * 0.49, 34, 6);
   ctx.fillStyle = "#172121";
-  ctx.fillText("sinc reconstruction", padding.left + 178, padding.top * 0.62);
+  ctx.fillText("sinc sum", padding.left + 178, padding.top * 0.62);
   ctx.strokeStyle = "#d95d39";
   ctx.lineWidth = 4;
   ctx.setLineDash([10, 8]);
   ctx.beginPath();
-  ctx.moveTo(padding.left + 400, padding.top * 0.52);
-  ctx.lineTo(padding.left + 440, padding.top * 0.52);
+  ctx.moveTo(padding.left + 285, padding.top * 0.52);
+  ctx.lineTo(padding.left + 325, padding.top * 0.52);
   ctx.stroke();
   ctx.setLineDash([]);
+  ctx.fillStyle = "rgba(217, 93, 57, 0.45)";
+  ctx.fillText("components", padding.left + 355, padding.top * 0.62);
 
   ctx.fillStyle = "#5f6b66";
   ctx.font = "700 22px system-ui";
   ctx.fillText(`Window ${Math.round(seconds * 1000)} ms`, padding.left, height - padding.bottom * 0.38);
   ctx.fillText(`Ts ${(1000 / sampleRate).toFixed(2)} ms`, padding.left + plotWidth * 0.42, height - padding.bottom * 0.38);
+}
+
+function drawAliasSpectrogram() {
+  fitCanvas(aliasCanvas);
+  const ctx = aliasCanvas.getContext("2d");
+  const { width, height } = aliasCanvas;
+  const padding = {
+    top: height * 0.14,
+    right: width * 0.04,
+    bottom: height * 0.2,
+    left: width * 0.08,
+  };
+  const plotWidth = width - padding.left - padding.right;
+  const plotHeight = height - padding.top - padding.bottom;
+  const freq = Number(signalFreq.value);
+  const sampleRate = Number(lessonSampleRate.value);
+  const nyquist = sampleRate / 2;
+  const alias = getAliasFrequency(freq, sampleRate);
+  const yMax = Math.max(1000, Math.ceil(Math.max(freq, nyquist) * 1.18 / 250) * 250);
+
+  ctx.clearRect(0, 0, width, height);
+  ctx.fillStyle = "#fbfcf8";
+  ctx.fillRect(0, 0, width, height);
+
+  const toY = (hz) => padding.top + plotHeight - (hz / yMax) * plotHeight;
+  const toX = (ratio) => padding.left + ratio * plotWidth;
+
+  const gradient = ctx.createLinearGradient(0, padding.top, 0, padding.top + plotHeight);
+  gradient.addColorStop(0, "rgba(217, 93, 57, 0.16)");
+  gradient.addColorStop(Math.max(0, 1 - nyquist / yMax), "rgba(217, 93, 57, 0.07)");
+  gradient.addColorStop(1, "rgba(15, 118, 110, 0.08)");
+  ctx.fillStyle = gradient;
+  ctx.fillRect(padding.left, padding.top, plotWidth, plotHeight);
+
+  ctx.strokeStyle = "#dbe3dc";
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 8; i += 1) {
+    const x = toX(i / 8);
+    ctx.beginPath();
+    ctx.moveTo(x, padding.top);
+    ctx.lineTo(x, padding.top + plotHeight);
+    ctx.stroke();
+  }
+  for (let i = 0; i <= 5; i += 1) {
+    const hz = (yMax / 5) * i;
+    const y = toY(hz);
+    ctx.beginPath();
+    ctx.moveTo(padding.left, y);
+    ctx.lineTo(padding.left + plotWidth, y);
+    ctx.stroke();
+    ctx.fillStyle = "#5f6b66";
+    ctx.font = "700 20px system-ui";
+    ctx.fillText(formatHz(hz), padding.left * 0.18, y + 7);
+  }
+
+  drawSpectrogramBand(ctx, padding, plotWidth, toY(freq), "#0b4f6c", "11, 79, 108", "true signal");
+  drawSpectrogramBand(ctx, padding, plotWidth, toY(alias), "#d95d39", "217, 93, 57", "observed");
+  drawNyquistBoundary(ctx, padding, plotWidth, toY(nyquist), nyquist);
+  drawFoldArrow(ctx, padding, plotWidth, toY(freq), toY(alias), freq > nyquist);
+
+  ctx.fillStyle = "#172121";
+  ctx.font = "800 22px system-ui";
+  ctx.fillText("time", padding.left + plotWidth - 46, height - padding.bottom * 0.33);
+  ctx.save();
+  ctx.translate(padding.left * 0.25, padding.top + plotHeight * 0.52);
+  ctx.rotate(-Math.PI / 2);
+  ctx.fillText("frequency", 0, 0);
+  ctx.restore();
+}
+
+function drawSpectrogramBand(ctx, padding, plotWidth, y, color, rgb, label) {
+  const bandGradient = ctx.createLinearGradient(padding.left, 0, padding.left + plotWidth, 0);
+  bandGradient.addColorStop(0, `rgba(${rgb}, 0)`);
+  bandGradient.addColorStop(0.15, `rgba(${rgb}, 0.74)`);
+  bandGradient.addColorStop(0.85, `rgba(${rgb}, 0.74)`);
+  bandGradient.addColorStop(1, `rgba(${rgb}, 0)`);
+  ctx.fillStyle = bandGradient;
+  ctx.fillRect(padding.left, y - 8, plotWidth, 16);
+
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(padding.left, y);
+  ctx.lineTo(padding.left + plotWidth, y);
+  ctx.stroke();
+
+  ctx.fillStyle = color;
+  ctx.font = "800 20px system-ui";
+  ctx.fillText(label, padding.left + 14, y - 14);
+}
+
+function drawNyquistBoundary(ctx, padding, plotWidth, y, nyquist) {
+  ctx.strokeStyle = "rgba(23, 33, 33, 0.45)";
+  ctx.lineWidth = 2;
+  ctx.setLineDash([9, 7]);
+  ctx.beginPath();
+  ctx.moveTo(padding.left, y);
+  ctx.lineTo(padding.left + plotWidth, y);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.fillStyle = "#172121";
+  ctx.font = "800 20px system-ui";
+  ctx.fillText(`Nyquist ${formatHz(nyquist)}`, padding.left + plotWidth - 190, y - 12);
+}
+
+function drawFoldArrow(ctx, padding, plotWidth, trueY, aliasY, shouldFold) {
+  if (!shouldFold) return;
+  const x = padding.left + plotWidth * 0.78;
+  ctx.strokeStyle = "#d95d39";
+  ctx.lineWidth = 3;
+  ctx.setLineDash([8, 7]);
+  ctx.beginPath();
+  ctx.moveTo(x, trueY);
+  ctx.quadraticCurveTo(x + plotWidth * 0.08, (trueY + aliasY) / 2, x, aliasY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = "#d95d39";
+  ctx.beginPath();
+  ctx.moveTo(x, aliasY);
+  ctx.lineTo(x - 9, aliasY - 16);
+  ctx.lineTo(x + 9, aliasY - 16);
+  ctx.closePath();
+  ctx.fill();
 }
 
 function reconstructSinc(samples, sampleRate, time) {
@@ -551,7 +709,7 @@ filterButtons.forEach((button) => {
   });
 });
 
-[signalFreq, lessonSampleRate, timeWindow].forEach((control) => {
+[signalFreq, lessonSampleRate, timeWindow, showSinc].forEach((control) => {
   control.addEventListener("input", drawSamplingLesson);
 });
 
