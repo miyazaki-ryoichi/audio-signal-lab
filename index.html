@@ -46,115 +46,124 @@
           <a id="downloadLink" class="download disabled" href="#" download="processed-audio.wav" aria-disabled="true">WAV保存</a>
         </section>
 
-        <section class="visual-grid">
-          <article class="panel panel-wave">
-            <div class="panel-head">
-              <h2>Waveform</h2>
-              <span id="waveMode">Original / Processed</span>
-            </div>
-            <canvas id="waveCanvas" width="1200" height="360" aria-label="波形表示"></canvas>
-          </article>
+        <nav class="module-nav" aria-label="表示する項目">
+          <button class="active" type="button" data-module-target="analyzer" aria-pressed="true">Audio Analyzer</button>
+          <button type="button" data-module-target="sampling" aria-pressed="false">Sampling Theorem</button>
+        </nav>
 
-          <article class="panel panel-spectrum">
-            <div class="panel-head">
-              <h2>Spectrum</h2>
-              <span id="dominantFreq">- Hz</span>
-            </div>
-            <canvas id="spectrumCanvas" width="1200" height="360" aria-label="周波数スペクトル表示"></canvas>
-          </article>
-        </section>
-
-        <section class="controls" aria-label="Signal processing controls">
-          <article class="control-block">
-            <div>
-              <h2>Filter</h2>
-              <p>Web Audio APIのBiquadFilterで処理します。</p>
-            </div>
-            <div class="segmented" role="group" aria-label="フィルタ種別">
-              <button class="active" type="button" data-filter="lowpass">Low</button>
-              <button type="button" data-filter="highpass">High</button>
-              <button type="button" data-filter="bandpass">Band</button>
-              <button type="button" data-filter="notch">Notch</button>
-            </div>
-          </article>
-
-          <article class="control-block sliders">
-            <label>
-              <span>Cutoff / Center</span>
-              <output id="cutoffValue">1800 Hz</output>
-              <input id="cutoff" type="range" min="80" max="12000" value="1800" step="10">
-            </label>
-            <label>
-              <span>Q</span>
-              <output id="qValue">1.00</output>
-              <input id="qFactor" type="range" min="0.1" max="16" value="1" step="0.1">
-            </label>
-            <label>
-              <span>Gain</span>
-              <output id="gainValue">0.0 dB</output>
-              <input id="gain" type="range" min="-18" max="18" value="0" step="0.5">
-            </label>
-          </article>
-
-          <article class="control-block toggles">
-            <label>
-              <input id="normalize" type="checkbox" checked>
-              <span>Normalize output</span>
-            </label>
-            <label>
-              <input id="monoMix" type="checkbox" checked>
-              <span>Analyze as mono mix</span>
-            </label>
-          </article>
-        </section>
-
-        <section class="lesson" aria-label="Sampling theorem and waveform reconstruction">
-          <article class="panel sampling-panel">
-            <div class="panel-head">
-              <div>
-                <h2>Sampling Theorem</h2>
-                <p>サンプル点からsinc補間で波形を復元します。</p>
+        <section class="module-view active" data-module="analyzer">
+          <section class="visual-grid">
+            <article class="panel panel-wave">
+              <div class="panel-head">
+                <h2>Waveform</h2>
+                <span id="waveMode">Original / Processed</span>
               </div>
-              <span id="nyquistStatus">Nyquist OK</span>
-            </div>
-            <canvas id="samplingCanvas" width="1400" height="520" aria-label="サンプリング定理と波形復元の表示"></canvas>
-          </article>
+              <canvas id="waveCanvas" width="1200" height="360" aria-label="波形表示"></canvas>
+            </article>
 
-          <aside class="lesson-controls">
+            <article class="panel panel-spectrum">
+              <div class="panel-head">
+                <h2>Spectrum</h2>
+                <span id="dominantFreq">- Hz</span>
+              </div>
+              <canvas id="spectrumCanvas" width="1200" height="360" aria-label="周波数スペクトル表示"></canvas>
+            </article>
+          </section>
+
+          <section class="controls" aria-label="Signal processing controls">
+            <article class="control-block">
+              <div>
+                <h2>Filter</h2>
+                <p>Web Audio APIのBiquadFilterで処理します。</p>
+              </div>
+              <div class="segmented" role="group" aria-label="フィルタ種別">
+                <button class="active" type="button" data-filter="lowpass">Low</button>
+                <button type="button" data-filter="highpass">High</button>
+                <button type="button" data-filter="bandpass">Band</button>
+                <button type="button" data-filter="notch">Notch</button>
+              </div>
+            </article>
+
             <article class="control-block sliders">
-              <div>
-                <h2>Signal</h2>
-                <p>元の正弦波とサンプリング周波数を動かします。</p>
-              </div>
               <label>
-                <span>Signal frequency</span>
-                <output id="signalFreqValue">440 Hz</output>
-                <input id="signalFreq" type="range" min="80" max="2400" value="440" step="10">
+                <span>Cutoff / Center</span>
+                <output id="cutoffValue">1800 Hz</output>
+                <input id="cutoff" type="range" min="80" max="12000" value="1800" step="10">
               </label>
               <label>
-                <span>Sample rate</span>
-                <output id="lessonSampleRateValue">1600 Hz</output>
-                <input id="lessonSampleRate" type="range" min="300" max="5000" value="1600" step="50">
+                <span>Q</span>
+                <output id="qValue">1.00</output>
+                <input id="qFactor" type="range" min="0.1" max="16" value="1" step="0.1">
               </label>
               <label>
-                <span>Time window</span>
-                <output id="timeWindowValue">20 ms</output>
-                <input id="timeWindow" type="range" min="8" max="60" value="20" step="1">
+                <span>Gain</span>
+                <output id="gainValue">0.0 dB</output>
+                <input id="gain" type="range" min="-18" max="18" value="0" step="0.5">
               </label>
             </article>
 
-            <article class="control-block readout">
-              <div>
-                <span class="metric-label">Nyquist frequency</span>
-                <strong id="nyquistFreq">800 Hz</strong>
-              </div>
-              <div>
-                <span class="metric-label">Apparent alias</span>
-                <strong id="aliasFreq">440 Hz</strong>
-              </div>
-              <p id="samplingNote">サンプルレートが信号周波数の2倍を超えると、理想的には元の波形を復元できます。</p>
+            <article class="control-block toggles">
+              <label>
+                <input id="normalize" type="checkbox" checked>
+                <span>Normalize output</span>
+              </label>
+              <label>
+                <input id="monoMix" type="checkbox" checked>
+                <span>Analyze as mono mix</span>
+              </label>
             </article>
-          </aside>
+          </section>
+        </section>
+
+        <section class="module-view" data-module="sampling">
+          <section class="lesson" aria-label="Sampling theorem and waveform reconstruction">
+            <article class="panel sampling-panel">
+              <div class="panel-head">
+                <div>
+                  <h2>Sampling Theorem</h2>
+                  <p>サンプル点からsinc補間で波形を復元します。</p>
+                </div>
+                <span id="nyquistStatus">Nyquist OK</span>
+              </div>
+              <canvas id="samplingCanvas" width="1400" height="520" aria-label="サンプリング定理と波形復元の表示"></canvas>
+            </article>
+
+            <aside class="lesson-controls">
+              <article class="control-block sliders">
+                <div>
+                  <h2>Signal</h2>
+                  <p>元の正弦波とサンプリング周波数を動かします。</p>
+                </div>
+                <label>
+                  <span>Signal frequency</span>
+                  <output id="signalFreqValue">440 Hz</output>
+                  <input id="signalFreq" type="range" min="80" max="2400" value="440" step="10">
+                </label>
+                <label>
+                  <span>Sample rate</span>
+                  <output id="lessonSampleRateValue">1600 Hz</output>
+                  <input id="lessonSampleRate" type="range" min="300" max="5000" value="1600" step="50">
+                </label>
+                <label>
+                  <span>Time window</span>
+                  <output id="timeWindowValue">20 ms</output>
+                  <input id="timeWindow" type="range" min="8" max="60" value="20" step="1">
+                </label>
+              </article>
+
+              <article class="control-block readout">
+                <div>
+                  <span class="metric-label">Nyquist frequency</span>
+                  <strong id="nyquistFreq">800 Hz</strong>
+                </div>
+                <div>
+                  <span class="metric-label">Apparent alias</span>
+                  <strong id="aliasFreq">440 Hz</strong>
+                </div>
+                <p id="samplingNote">サンプルレートが信号周波数の2倍を超えると、理想的には元の波形を復元できます。</p>
+              </article>
+            </aside>
+          </section>
         </section>
       </section>
     </main>

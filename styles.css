@@ -155,7 +155,8 @@ h2 {
 
 .transport button,
 .download,
-.segmented button {
+.segmented button,
+.module-nav button {
   min-height: 42px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -169,7 +170,8 @@ h2 {
 
 .transport button:not(:disabled):hover,
 .download:not(.disabled):hover,
-.segmented button:hover {
+.segmented button:hover,
+.module-nav button:hover {
   border-color: var(--accent);
 }
 
@@ -177,6 +179,31 @@ h2 {
 .download.disabled {
   cursor: not-allowed;
   opacity: 0.45;
+}
+
+.module-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 16px 0 0;
+}
+
+.module-nav button {
+  min-width: 170px;
+}
+
+.module-nav button.active {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+  color: white;
+}
+
+.module-view {
+  display: none;
+}
+
+.module-view.active {
+  display: block;
 }
 
 .visual-grid,
@@ -352,6 +379,10 @@ output {
   .transport > * {
     flex: 1 1 130px;
     text-align: center;
+  }
+
+  .module-nav button {
+    flex: 1 1 160px;
   }
 
   .segmented {

@@ -30,6 +30,8 @@ const nyquistStatus = document.querySelector("#nyquistStatus");
 const nyquistFreq = document.querySelector("#nyquistFreq");
 const aliasFreq = document.querySelector("#aliasFreq");
 const samplingNote = document.querySelector("#samplingNote");
+const moduleButtons = [...document.querySelectorAll("[data-module-target]")];
+const moduleViews = [...document.querySelectorAll("[data-module]")];
 const canvases = [waveCanvas, spectrumCanvas, samplingCanvas];
 
 const state = {
@@ -375,6 +377,24 @@ function fitCanvas(canvas) {
   }
 }
 
+function activateModule(moduleName) {
+  moduleButtons.forEach((button) => {
+    const isActive = button.dataset.moduleTarget === moduleName;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-pressed", String(isActive));
+  });
+
+  moduleViews.forEach((view) => {
+    view.classList.toggle("active", view.dataset.module === moduleName);
+  });
+
+  requestAnimationFrame(() => {
+    drawWaveform();
+    drawSpectrum();
+    drawSamplingLesson();
+  });
+}
+
 async function processAudio() {
   if (!state.originalBuffer) return;
 
@@ -533,6 +553,12 @@ filterButtons.forEach((button) => {
 
 [signalFreq, lessonSampleRate, timeWindow].forEach((control) => {
   control.addEventListener("input", drawSamplingLesson);
+});
+
+moduleButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    activateModule(button.dataset.moduleTarget);
+  });
 });
 
 playOriginal.addEventListener("click", () => playBuffer(state.originalBuffer));
