@@ -48,6 +48,7 @@ a {
 .status-strip,
 .transport,
 .controls,
+.lesson-controls,
 .panel {
   background: rgba(255, 255, 255, 0.92);
   border: 1px solid var(--line);
@@ -178,11 +179,20 @@ h2 {
   opacity: 0.45;
 }
 
-.visual-grid {
+.visual-grid,
+.lesson {
   display: grid;
-  grid-template-columns: 1fr 1fr;
   gap: 16px;
   margin: 16px 0;
+}
+
+.visual-grid {
+  grid-template-columns: 1fr 1fr;
+}
+
+.lesson {
+  grid-template-columns: minmax(0, 1.6fr) minmax(320px, 0.8fr);
+  align-items: stretch;
 }
 
 .panel {
@@ -198,6 +208,41 @@ h2 {
   align-items: center;
   padding: 14px 16px;
   border-bottom: 1px solid var(--line);
+}
+
+.panel-head p {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.sampling-panel canvas {
+  height: clamp(330px, 45vw, 520px);
+}
+
+.lesson-controls {
+  display: grid;
+  gap: 1px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--line);
+}
+
+.readout {
+  align-content: start;
+}
+
+.readout > div {
+  display: grid;
+  gap: 5px;
+}
+
+.readout strong {
+  font-size: 1.25rem;
+}
+
+.readout p {
+  line-height: 1.55;
 }
 
 canvas {
@@ -280,6 +325,7 @@ output {
 
   .topbar,
   .visual-grid,
+  .lesson,
   .controls {
     grid-template-columns: 1fr;
   }
@@ -310,5 +356,10 @@ output {
 
   .segmented {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .panel-head {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }

@@ -107,6 +107,55 @@
             </label>
           </article>
         </section>
+
+        <section class="lesson" aria-label="Sampling theorem and waveform reconstruction">
+          <article class="panel sampling-panel">
+            <div class="panel-head">
+              <div>
+                <h2>Sampling Theorem</h2>
+                <p>サンプル点からsinc補間で波形を復元します。</p>
+              </div>
+              <span id="nyquistStatus">Nyquist OK</span>
+            </div>
+            <canvas id="samplingCanvas" width="1400" height="520" aria-label="サンプリング定理と波形復元の表示"></canvas>
+          </article>
+
+          <aside class="lesson-controls">
+            <article class="control-block sliders">
+              <div>
+                <h2>Signal</h2>
+                <p>元の正弦波とサンプリング周波数を動かします。</p>
+              </div>
+              <label>
+                <span>Signal frequency</span>
+                <output id="signalFreqValue">440 Hz</output>
+                <input id="signalFreq" type="range" min="80" max="2400" value="440" step="10">
+              </label>
+              <label>
+                <span>Sample rate</span>
+                <output id="lessonSampleRateValue">1600 Hz</output>
+                <input id="lessonSampleRate" type="range" min="300" max="5000" value="1600" step="50">
+              </label>
+              <label>
+                <span>Time window</span>
+                <output id="timeWindowValue">20 ms</output>
+                <input id="timeWindow" type="range" min="8" max="60" value="20" step="1">
+              </label>
+            </article>
+
+            <article class="control-block readout">
+              <div>
+                <span class="metric-label">Nyquist frequency</span>
+                <strong id="nyquistFreq">800 Hz</strong>
+              </div>
+              <div>
+                <span class="metric-label">Apparent alias</span>
+                <strong id="aliasFreq">440 Hz</strong>
+              </div>
+              <p id="samplingNote">サンプルレートが信号周波数の2倍を超えると、理想的には元の波形を復元できます。</p>
+            </article>
+          </aside>
+        </section>
       </section>
     </main>
     <script src="script.js"></script>
