@@ -208,7 +208,8 @@ h2 {
 
 .visual-grid,
 .lesson,
-.lesson-stack {
+.lesson-stack,
+.concept-layout {
   display: grid;
   gap: 16px;
   margin: 16px 0;
@@ -221,6 +222,10 @@ h2 {
 .lesson {
   grid-template-columns: minmax(0, 1.6fr) minmax(320px, 0.8fr);
   align-items: stretch;
+}
+
+.concept-layout {
+  grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.75fr);
 }
 
 .lesson-stack {
@@ -292,6 +297,60 @@ h2 {
   width: 18px;
   height: 18px;
   accent-color: var(--hot);
+}
+
+.concept-hero {
+  min-height: 410px;
+}
+
+.concept-flow,
+.filter-compare {
+  display: grid;
+  gap: 1px;
+  background: var(--line);
+}
+
+.concept-flow {
+  grid-template-columns: repeat(5, minmax(120px, 1fr));
+}
+
+.concept-flow > div,
+.filter-compare > div {
+  display: grid;
+  gap: 10px;
+  align-content: center;
+  min-height: 220px;
+  padding: 18px;
+  background: #fbfcf8;
+}
+
+.concept-flow strong,
+.filter-compare strong {
+  font-size: clamp(1.15rem, 2vw, 1.6rem);
+}
+
+.filter-compare {
+  grid-template-columns: 1fr 1fr;
+}
+
+.filter-compare p,
+.concept-card p {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.concept-list {
+  display: grid;
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--line);
+  box-shadow: var(--shadow);
+}
+
+.concept-card {
+  box-shadow: none;
 }
 
 canvas {
@@ -375,8 +434,19 @@ output {
   .topbar,
   .visual-grid,
   .lesson,
+  .concept-layout,
   .controls {
     grid-template-columns: 1fr;
+  }
+
+  .concept-flow,
+  .filter-compare {
+    grid-template-columns: 1fr;
+  }
+
+  .concept-flow > div,
+  .filter-compare > div {
+    min-height: 150px;
   }
 
   .topbar {

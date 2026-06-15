@@ -49,6 +49,8 @@
         <nav class="module-nav" aria-label="表示する項目">
           <button class="active" type="button" data-module-target="analyzer" aria-pressed="true">Audio Analyzer</button>
           <button type="button" data-module-target="sampling" aria-pressed="false">Sampling Theorem</button>
+          <button type="button" data-module-target="lti" aria-pressed="false">LTI Systems</button>
+          <button type="button" data-module-target="filters" aria-pressed="false">FIR/IIR & Stability</button>
         </nav>
 
         <section class="module-view active" data-module="analyzer">
@@ -178,6 +180,98 @@
                   <strong id="aliasFreq">440 Hz</strong>
                 </div>
                 <p id="samplingNote">サンプルレートが信号周波数の2倍を超えると、理想的には元の波形を復元できます。</p>
+              </article>
+            </aside>
+          </section>
+        </section>
+
+        <section class="module-view" data-module="lti">
+          <section class="concept-layout" aria-label="LTI systems roadmap">
+            <article class="panel concept-hero">
+              <div class="panel-head">
+                <div>
+                  <h2>LTI Systems</h2>
+                  <p>入力、インパルス応答、畳み込み、伝達関数、周波数応答を1つの流れで見ます。</p>
+                </div>
+                <span>time / frequency</span>
+              </div>
+              <div class="concept-flow">
+                <div>
+                  <span class="metric-label">Input</span>
+                  <strong>x[n]</strong>
+                </div>
+                <div>
+                  <span class="metric-label">Impulse response</span>
+                  <strong>h[n]</strong>
+                </div>
+                <div>
+                  <span class="metric-label">Convolution</span>
+                  <strong>y[n] = x[n] * h[n]</strong>
+                </div>
+                <div>
+                  <span class="metric-label">Transfer function</span>
+                  <strong>H(z)</strong>
+                </div>
+                <div>
+                  <span class="metric-label">Frequency response</span>
+                  <strong>H(e<sup>jω</sup>)</strong>
+                </div>
+              </div>
+            </article>
+
+            <aside class="concept-list">
+              <article class="control-block concept-card">
+                <h2>Impulse Response</h2>
+                <p>システムに単位インパルスを入れたときの出力。LTIではこれだけでシステム全体が決まります。</p>
+              </article>
+              <article class="control-block concept-card">
+                <h2>Time Convolution</h2>
+                <p>入力波形をずらしながら、インパルス応答と重ねて足し合わせます。</p>
+              </article>
+              <article class="control-block concept-card">
+                <h2>Frequency Response</h2>
+                <p>畳み込みは周波数領域では掛け算になります。音色変化を見せる中心です。</p>
+              </article>
+            </aside>
+          </section>
+        </section>
+
+        <section class="module-view" data-module="filters">
+          <section class="concept-layout" aria-label="FIR IIR and stability roadmap">
+            <article class="panel concept-hero">
+              <div class="panel-head">
+                <div>
+                  <h2>FIR/IIR & Stability</h2>
+                  <p>有限長の畳み込み、フィードバック、極と零点、安定性をまとめて扱います。</p>
+                </div>
+                <span>poles / zeros</span>
+              </div>
+              <div class="filter-compare">
+                <div>
+                  <span class="metric-label">FIR</span>
+                  <strong>y[n] = Σ b[k]x[n-k]</strong>
+                  <p>過去の入力だけを使う。インパルス応答は有限長で、安定性を扱いやすい。</p>
+                </div>
+                <div>
+                  <span class="metric-label">IIR</span>
+                  <strong>y[n] = Σ b[k]x[n-k] - Σ a[k]y[n-k]</strong>
+                  <p>過去の出力を戻す。少ない係数で強い特性を作れるが、安定性の確認が重要。</p>
+                </div>
+              </div>
+            </article>
+
+            <aside class="concept-list">
+              <article class="control-block concept-card">
+                <h2>Transfer Function</h2>
+                <p>差分方程式をz変換してH(z)で表すと、FIR/IIRの構造が同じ図で見えます。</p>
+              </article>
+              <article class="control-block concept-card">
+                <h2>Stability</h2>
+                <p>離散時間IIRでは極が単位円の内側にあると安定。外に出ると発散します。</p>
+              </article>
+              <article class="control-block concept-card">
+                <h2>Design View</h2>
+                <p>係数、インパルス応答、周波数応答、極零配置を連動させる画面に発展させます。</p>
               </article>
             </aside>
           </section>
