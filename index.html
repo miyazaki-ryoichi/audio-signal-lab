@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Audio Signal Lab</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="workspace" aria-label="Audio Signal Lab">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Browser DSP Workbench</p>
+            <h1>Audio Signal Lab</h1>
+          </div>
+          <label class="file-picker">
+            <input id="audioFile" type="file" accept="audio/*">
+            <span>音声を選択</span>
+          </label>
+        </header>
+
+        <section class="status-strip" aria-live="polite">
+          <div>
+            <span class="metric-label">File</span>
+            <strong id="fileName">未選択</strong>
+          </div>
+          <div>
+            <span class="metric-label">Duration</span>
+            <strong id="duration">0.00 s</strong>
+          </div>
+          <div>
+            <span class="metric-label">Sample Rate</span>
+            <strong id="sampleRate">-</strong>
+          </div>
+          <div>
+            <span class="metric-label">Peak</span>
+            <strong id="peakLevel">- dBFS</strong>
+          </div>
+        </section>
+
+        <section class="transport">
+          <button id="playOriginal" type="button" disabled aria-label="元音声を再生">Original</button>
+          <button id="playProcessed" type="button" disabled aria-label="処理後音声を再生">Processed</button>
+          <button id="stopAudio" type="button" disabled aria-label="停止">Stop</button>
+          <a id="downloadLink" class="download disabled" href="#" download="processed-audio.wav" aria-disabled="true">WAV保存</a>
+        </section>
+
+        <section class="visual-grid">
+          <article class="panel panel-wave">
+            <div class="panel-head">
+              <h2>Waveform</h2>
+              <span id="waveMode">Original / Processed</span>
+            </div>
+            <canvas id="waveCanvas" width="1200" height="360" aria-label="波形表示"></canvas>
+          </article>
+
+          <article class="panel panel-spectrum">
+            <div class="panel-head">
+              <h2>Spectrum</h2>
+              <span id="dominantFreq">- Hz</span>
+            </div>
+            <canvas id="spectrumCanvas" width="1200" height="360" aria-label="周波数スペクトル表示"></canvas>
+          </article>
+        </section>
+
+        <section class="controls" aria-label="Signal processing controls">
+          <article class="control-block">
+            <div>
+              <h2>Filter</h2>
+              <p>Web Audio APIのBiquadFilterで処理します。</p>
+            </div>
+            <div class="segmented" role="group" aria-label="フィルタ種別">
+              <button class="active" type="button" data-filter="lowpass">Low</button>
+              <button type="button" data-filter="highpass">High</button>
+              <button type="button" data-filter="bandpass">Band</button>
+              <button type="button" data-filter="notch">Notch</button>
+            </div>
+          </article>
+
+          <article class="control-block sliders">
+            <label>
+              <span>Cutoff / Center</span>
+              <output id="cutoffValue">1800 Hz</output>
+              <input id="cutoff" type="range" min="80" max="12000" value="1800" step="10">
+            </label>
+            <label>
+              <span>Q</span>
+              <output id="qValue">1.00</output>
+              <input id="qFactor" type="range" min="0.1" max="16" value="1" step="0.1">
+            </label>
+            <label>
+              <span>Gain</span>
+              <output id="gainValue">0.0 dB</output>
+              <input id="gain" type="range" min="-18" max="18" value="0" step="0.5">
+            </label>
+          </article>
+
+          <article class="control-block toggles">
+            <label>
+              <input id="normalize" type="checkbox" checked>
+              <span>Normalize output</span>
+            </label>
+            <label>
+              <input id="monoMix" type="checkbox" checked>
+              <span>Analyze as mono mix</span>
+            </label>
+          </article>
+        </section>
+      </section>
+    </main>
+    <script src="script.js"></script>
+  </body>
+</html>
