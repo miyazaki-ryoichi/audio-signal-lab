@@ -373,12 +373,12 @@
                 <article class="panel">
                   <div class="panel-head">
                     <div>
-                      <h2>Spectral Leakage</h2>
-                      <p>ビンに乗らない正弦波のエネルギーが周囲に漏れる様子です。</p>
+                      <h2>Two-Tone Leakage</h2>
+                      <p>強い成分の漏れが、近くの弱い成分を隠すかどうかを見ます。</p>
                     </div>
-                    <span id="leakageReadout">offset 0.30 bin</span>
+                    <span id="leakageReadout">weak tone visible</span>
                   </div>
-                  <canvas id="leakageCanvas" width="700" height="520" aria-label="スペクトル漏れ表示"></canvas>
+                  <canvas id="leakageCanvas" width="700" height="520" aria-label="2つの正弦波によるスペクトル漏れ表示"></canvas>
                 </article>
               </section>
             </div>
@@ -399,9 +399,19 @@
 
               <article class="control-block sliders">
                 <label>
-                  <span>Tone bin</span>
+                  <span>Strong tone bin</span>
                   <output id="toneBinValue">7.30</output>
                   <input id="toneBin" type="range" min="3" max="18" value="7.3" step="0.05">
+                </label>
+                <label>
+                  <span>Weak tone gap</span>
+                  <output id="weakToneGapValue">2.2 bins</output>
+                  <input id="weakToneGap" type="range" min="0.4" max="8" value="2.2" step="0.1">
+                </label>
+                <label>
+                  <span>Weak tone level</span>
+                  <output id="weakToneLevelValue">-36 dB</output>
+                  <input id="weakToneLevel" type="range" min="-60" max="-12" value="-36" step="1">
                 </label>
                 <label>
                   <span>FFT size</span>

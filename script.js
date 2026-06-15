@@ -46,6 +46,10 @@ const lobeReadout = document.querySelector("#lobeReadout");
 const leakageReadout = document.querySelector("#leakageReadout");
 const toneBin = document.querySelector("#toneBin");
 const toneBinValue = document.querySelector("#toneBinValue");
+const weakToneGap = document.querySelector("#weakToneGap");
+const weakToneGapValue = document.querySelector("#weakToneGapValue");
+const weakToneLevel = document.querySelector("#weakToneLevel");
+const weakToneLevelValue = document.querySelector("#weakToneLevelValue");
 const windowSize = document.querySelector("#windowSize");
 const windowSizeValue = document.querySelector("#windowSizeValue");
 const signalFreqValue = document.querySelector("#signalFreqValue");
@@ -865,18 +869,21 @@ function drawFilterFrequency(impulse) {
 function drawWindowLab() {
   const size = Number(windowSize.value);
   const bin = Number(toneBin.value);
+  const weakGap = Number(weakToneGap.value);
+  const weakLevel = Number(weakToneLevel.value);
   const window = makeWindow(state.windowType, size);
   const lobe = getWindowLobeInfo(state.windowType);
 
   windowName.textContent = lobe.name;
   lobeReadout.textContent = `main ${lobe.mainBins} bins / side ${lobe.sideDb} dB`;
-  leakageReadout.textContent = `offset ${(bin - Math.round(bin)).toFixed(2)} bin`;
   toneBinValue.value = bin.toFixed(2);
+  weakToneGapValue.value = `${weakGap.toFixed(1)} bins`;
+  weakToneLevelValue.value = `${weakLevel} dB`;
   windowSizeValue.value = size;
 
   drawWindowShape(window, lobe);
   drawWindowResponse(window, lobe);
-  drawLeakageSpectrum(window, bin);
+  drawLeakageSpectrum(window, bin, weakGap, weakLevel);
 }
 
 function makeWindow(type, size) {
@@ -969,13 +976,19 @@ function getDtftDb(signal, bins) {
   return magnitudes.map((value) => 20 * Math.log10(Math.max(value / maxValue, 1e-8)));
 }
 
-function drawLeakageSpectrum(window, bin) {
+function drawLeakageSpectrum(window, strongBin, weakGap, weakLevelDb) {
   fitCanvas(leakageCanvas);
   const ctx = leakageCanvas.getContext("2d");
   const { width, height } = leakageCanvas;
   drawGrid(ctx, width, height);
 
-  const samples = window.map((w, n) => Math.sin((2 * Math.PI * bin * n) / window.length) * w);
+  const weakBin = Math.min(window.length / 2 - 1, strongBin + weakGap);
+  const weakAmp = 10 ** (weakLevelDb / 20);
+  const samples = window.map((w, n) => {
+    const strongTone = Math.sin((2 * Math.PI * strongBin * n) / window.length);
+    const weakTone = weakAmp * Math.sin((2 * Math.PI * weakBin * n) / window.length);
+    return (strongTone + weakTone) * w;
+  });
   const spectrum = getDftDb(samples).slice(0, window.length / 2);
   const rect = {
     left: width * 0.13,
@@ -984,8 +997,10 @@ function drawLeakageSpectrum(window, bin) {
     height: height * 0.68,
   };
   drawDbAxes(ctx, rect, "0", "Nyquist");
-  drawSpectrumBars(ctx, spectrum, rect, -90, 0);
-  drawToneMarker(ctx, rect, bin, spectrum.length);
+  drawSpectrumBars(ctx, spectrum, rect, -90, 0, strongBin, weakBin);
+  drawToneMarker(ctx, rect, strongBin, spectrum.length, "strong", "#172121");
+  drawToneMarker(ctx, rect, weakBin, spectrum.length, "weak", "#0b4f6c");
+  drawLeakageDecision(ctx, rect, spectrum, strongBin, weakBin, weakLevelDb);
 }
 
 function getDftDb(signal) {
@@ -1039,13 +1054,21 @@ function drawDbCurve(ctx, data, rect, color, minDb, maxDb) {
   ctx.stroke();
 }
 
-function drawSpectrumBars(ctx, data, rect, minDb, maxDb) {
+function drawSpectrumBars(ctx, data, rect, minDb, maxDb, strongBin = -1, weakBin = -1) {
   const barWidth = rect.width / data.length;
   data.forEach((db, index) => {
     const x = rect.left + index * barWidth;
     const y = mapDbToY(db, rect, minDb, maxDb);
     const colorStrength = Math.max(0.18, (db - minDb) / (maxDb - minDb));
-    ctx.fillStyle = `rgba(217, 93, 57, ${colorStrength})`;
+    const distanceToWeak = Math.abs(index - weakBin);
+    const distanceToStrong = Math.abs(index - strongBin);
+    if (distanceToWeak < 0.75) {
+      ctx.fillStyle = `rgba(11, 79, 108, ${Math.max(0.38, colorStrength)})`;
+    } else if (distanceToStrong < 0.75) {
+      ctx.fillStyle = `rgba(23, 33, 33, ${Math.max(0.42, colorStrength)})`;
+    } else {
+      ctx.fillStyle = `rgba(217, 93, 57, ${colorStrength})`;
+    }
     ctx.fillRect(x, y, Math.max(2, barWidth * 0.78), rect.top + rect.height - y);
   });
 }
@@ -1080,9 +1103,9 @@ function drawSideLobeBand(ctx, rect, sideDb, minDb, maxDb) {
   ctx.fillText(`side lobe ${sideDb} dB`, rect.left + rect.width * 0.48, y - 8);
 }
 
-function drawToneMarker(ctx, rect, bin, binCount) {
+function drawToneMarker(ctx, rect, bin, binCount, label = "tone", color = "#172121") {
   const x = rect.left + (bin / binCount) * rect.width;
-  ctx.strokeStyle = "#172121";
+  ctx.strokeStyle = color;
   ctx.lineWidth = 2;
   ctx.setLineDash([8, 6]);
   ctx.beginPath();
@@ -1090,9 +1113,35 @@ function drawToneMarker(ctx, rect, bin, binCount) {
   ctx.lineTo(x, rect.top + rect.height);
   ctx.stroke();
   ctx.setLineDash([]);
-  ctx.fillStyle = "#172121";
+  ctx.fillStyle = color;
   ctx.font = "800 18px system-ui";
-  ctx.fillText(`tone ${bin.toFixed(2)} bins`, Math.min(x + 8, rect.left + rect.width - 150), rect.top + 26);
+  ctx.fillText(`${label} ${bin.toFixed(2)}`, Math.min(x + 8, rect.left + rect.width - 120), rect.top + 26);
+}
+
+function drawLeakageDecision(ctx, rect, spectrum, strongBin, weakBin, weakLevelDb) {
+  const weakIndex = Math.max(0, Math.min(spectrum.length - 1, Math.round(weakBin)));
+  const weakObserved = spectrum[weakIndex];
+  const localLeakage = Math.max(
+    spectrum[Math.max(0, weakIndex - 2)] ?? -90,
+    spectrum[Math.max(0, weakIndex - 1)] ?? -90,
+    spectrum[Math.min(spectrum.length - 1, weakIndex + 1)] ?? -90,
+    spectrum[Math.min(spectrum.length - 1, weakIndex + 2)] ?? -90
+  );
+  const contrast = weakObserved - localLeakage;
+  const visible = contrast > 3 || Math.abs(weakBin - strongBin) > 5;
+  leakageReadout.textContent = visible ? "weak tone visible" : "weak tone masked";
+  leakageReadout.style.color = visible ? "#0f766e" : "#d95d39";
+
+  ctx.fillStyle = visible ? "#0f766e" : "#d95d39";
+  ctx.font = "800 20px system-ui";
+  ctx.fillText(
+    visible ? "weak tone separates from leakage" : "weak tone is buried in leakage",
+    rect.left,
+    rect.top - 18
+  );
+  ctx.fillStyle = "#5f6b66";
+  ctx.font = "700 18px system-ui";
+  ctx.fillText(`weak source level ${weakLevelDb} dB`, rect.left + rect.width - 190, rect.top - 18);
 }
 
 function mapDbToY(db, rect, minDb, maxDb) {
@@ -1329,7 +1378,7 @@ windowTypeButtons.forEach((button) => {
   });
 });
 
-[toneBin, windowSize].forEach((control) => {
+[toneBin, weakToneGap, weakToneLevel, windowSize].forEach((control) => {
   control.addEventListener("input", drawWindowLab);
 });
 
