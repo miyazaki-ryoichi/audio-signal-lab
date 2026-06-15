@@ -329,6 +329,27 @@ h2 {
   font-size: clamp(1.15rem, 2vw, 1.6rem);
 }
 
+.equation {
+  display: block;
+  line-height: 1.35;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.equation-block {
+  overflow-x: auto;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcf8;
+}
+
+.equation-block mjx-container,
+.equation mjx-container {
+  margin: 0;
+  min-width: max-content;
+}
+
 .filter-compare {
   grid-template-columns: 1fr 1fr;
 }

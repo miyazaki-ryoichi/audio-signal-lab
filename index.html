@@ -5,6 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Audio Signal Lab</title>
     <link rel="stylesheet" href="styles.css?v=20260615-sinc-alias">
+    <script>
+      window.MathJax = {
+        tex: {
+          inlineMath: [["\\(", "\\)"]],
+          displayMath: [["\\[", "\\]"]]
+        },
+        svg: {
+          fontCache: "global"
+        }
+      };
+    </script>
+    <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
   </head>
   <body>
     <main class="app-shell">
@@ -198,23 +210,23 @@
               <div class="concept-flow">
                 <div>
                   <span class="metric-label">Input</span>
-                  <strong>x[n]</strong>
+                  <strong class="equation">\(x[n]\)</strong>
                 </div>
                 <div>
                   <span class="metric-label">Impulse response</span>
-                  <strong>h[n]</strong>
+                  <strong class="equation">\(h[n]\)</strong>
                 </div>
                 <div>
                   <span class="metric-label">Convolution</span>
-                  <strong>y[n] = x[n] * h[n]</strong>
+                  <strong class="equation">\(y[n]=(x*h)[n]\)</strong>
                 </div>
                 <div>
                   <span class="metric-label">Transfer function</span>
-                  <strong>H(z)</strong>
+                  <strong class="equation">\(H(z)=\sum_{n=-\infty}^{\infty}h[n]z^{-n}\)</strong>
                 </div>
                 <div>
                   <span class="metric-label">Frequency response</span>
-                  <strong>H(e<sup>jω</sup>)</strong>
+                  <strong class="equation">\(H(e^{j\omega})\)</strong>
                 </div>
               </div>
             </article>
@@ -222,14 +234,23 @@
             <aside class="concept-list">
               <article class="control-block concept-card">
                 <h2>Impulse Response</h2>
+                <div class="equation-block">\[
+                  h[n] = T\{\delta[n]\}
+                \]</div>
                 <p>システムに単位インパルスを入れたときの出力。LTIではこれだけでシステム全体が決まります。</p>
               </article>
               <article class="control-block concept-card">
                 <h2>Time Convolution</h2>
+                <div class="equation-block">\[
+                  y[n] = \sum_{k=-\infty}^{\infty} x[k]h[n-k]
+                \]</div>
                 <p>入力波形をずらしながら、インパルス応答と重ねて足し合わせます。</p>
               </article>
               <article class="control-block concept-card">
                 <h2>Frequency Response</h2>
+                <div class="equation-block">\[
+                  Y(e^{j\omega}) = X(e^{j\omega})H(e^{j\omega})
+                \]</div>
                 <p>畳み込みは周波数領域では掛け算になります。音色変化を見せる中心です。</p>
               </article>
             </aside>
@@ -249,12 +270,16 @@
               <div class="filter-compare">
                 <div>
                   <span class="metric-label">FIR</span>
-                  <strong>y[n] = Σ b[k]x[n-k]</strong>
+                  <strong class="equation">\[
+                    y[n] = \sum_{k=0}^{M} b_k x[n-k]
+                  \]</strong>
                   <p>過去の入力だけを使う。インパルス応答は有限長で、安定性を扱いやすい。</p>
                 </div>
                 <div>
                   <span class="metric-label">IIR</span>
-                  <strong>y[n] = Σ b[k]x[n-k] - Σ a[k]y[n-k]</strong>
+                  <strong class="equation">\[
+                    y[n] = \sum_{k=0}^{M} b_k x[n-k] - \sum_{k=1}^{N} a_k y[n-k]
+                  \]</strong>
                   <p>過去の出力を戻す。少ない係数で強い特性を作れるが、安定性の確認が重要。</p>
                 </div>
               </div>
@@ -263,14 +288,23 @@
             <aside class="concept-list">
               <article class="control-block concept-card">
                 <h2>Transfer Function</h2>
+                <div class="equation-block">\[
+                  H(z)=\frac{\sum_{k=0}^{M}b_k z^{-k}}{1+\sum_{k=1}^{N}a_k z^{-k}}
+                \]</div>
                 <p>差分方程式をz変換してH(z)で表すと、FIR/IIRの構造が同じ図で見えます。</p>
               </article>
               <article class="control-block concept-card">
                 <h2>Stability</h2>
+                <div class="equation-block">\[
+                  \text{stable} \Longleftrightarrow |p_i| < 1 \quad \text{for all poles } p_i
+                \]</div>
                 <p>離散時間IIRでは極が単位円の内側にあると安定。外に出ると発散します。</p>
               </article>
               <article class="control-block concept-card">
                 <h2>Design View</h2>
+                <div class="equation-block">\[
+                  \{a_k,b_k\} \rightarrow h[n] \rightarrow H(e^{j\omega}) \rightarrow \text{sound}
+                \]</div>
                 <p>係数、インパルス応答、周波数応答、極零配置を連動させる画面に発展させます。</p>
               </article>
             </aside>
