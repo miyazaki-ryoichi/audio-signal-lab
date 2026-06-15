@@ -209,6 +209,7 @@ h2 {
 .visual-grid,
 .lesson,
 .lesson-stack,
+.lab-layout,
 .concept-layout {
   display: grid;
   gap: 16px;
@@ -222,6 +223,11 @@ h2 {
 .lesson {
   grid-template-columns: minmax(0, 1.6fr) minmax(320px, 0.8fr);
   align-items: stretch;
+}
+
+.lab-layout {
+  grid-template-columns: minmax(0, 1.55fr) minmax(320px, 0.85fr);
+  align-items: start;
 }
 
 .concept-layout {
@@ -259,6 +265,23 @@ h2 {
 
 .spectrogram-panel canvas {
   height: clamp(250px, 32vw, 360px);
+}
+
+.filter-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+#ltiTimeCanvas,
+#filterTimeCanvas {
+  height: clamp(310px, 38vw, 460px);
+}
+
+#ltiFreqCanvas,
+#poleZeroCanvas,
+#filterFreqCanvas {
+  height: clamp(260px, 32vw, 380px);
 }
 
 .lesson-controls {
@@ -455,7 +478,9 @@ output {
   .topbar,
   .visual-grid,
   .lesson,
+  .lab-layout,
   .concept-layout,
+  .filter-grid,
   .controls {
     grid-template-columns: 1fr;
   }

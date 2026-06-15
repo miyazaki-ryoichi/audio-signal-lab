@@ -198,120 +198,152 @@
         </section>
 
         <section class="module-view" data-module="lti">
-          <section class="concept-layout" aria-label="LTI systems roadmap">
-            <article class="panel concept-hero">
-              <div class="panel-head">
-                <div>
-                  <h2>LTI Systems</h2>
-                  <p>入力、インパルス応答、畳み込み、伝達関数、周波数応答を1つの流れで見ます。</p>
+          <section class="lab-layout" aria-label="LTI systems interactive lab">
+            <div class="lesson-stack">
+              <article class="panel">
+                <div class="panel-head">
+                  <div>
+                    <h2>LTI Systems</h2>
+                    <p>入力 \(x[n]\)、インパルス応答 \(h[n]\)、畳み込み出力 \(y[n]\) を同じ時間軸で見ます。</p>
+                  </div>
+                  <span id="ltiSystemName">Moving average</span>
                 </div>
-                <span>time / frequency</span>
-              </div>
-              <div class="concept-flow">
-                <div>
-                  <span class="metric-label">Input</span>
-                  <strong class="equation">\(x[n]\)</strong>
-                </div>
-                <div>
-                  <span class="metric-label">Impulse response</span>
-                  <strong class="equation">\(h[n]\)</strong>
-                </div>
-                <div>
-                  <span class="metric-label">Convolution</span>
-                  <strong class="equation">\(y[n]=(x*h)[n]\)</strong>
-                </div>
-                <div>
-                  <span class="metric-label">Transfer function</span>
-                  <strong class="equation">\(H(z)=\sum_{n=-\infty}^{\infty}h[n]z^{-n}\)</strong>
-                </div>
-                <div>
-                  <span class="metric-label">Frequency response</span>
-                  <strong class="equation">\(H(e^{j\omega})\)</strong>
-                </div>
-              </div>
-            </article>
-
-            <aside class="concept-list">
-              <article class="control-block concept-card">
-                <h2>Impulse Response</h2>
-                <div class="equation-block">\[
-                  h[n] = T\{\delta[n]\}
-                \]</div>
-                <p>システムに単位インパルスを入れたときの出力。LTIではこれだけでシステム全体が決まります。</p>
+                <canvas id="ltiTimeCanvas" width="1400" height="560" aria-label="LTIシステムの時間領域表示"></canvas>
               </article>
+
+              <article class="panel">
+                <div class="panel-head">
+                  <div>
+                    <h2>Frequency Response</h2>
+                    <p>時間領域の畳み込みは、周波数領域では掛け算として見えます。</p>
+                  </div>
+                  <span>\(Y=XH\)</span>
+                </div>
+                <canvas id="ltiFreqCanvas" width="1400" height="420" aria-label="LTIシステムの周波数応答表示"></canvas>
+              </article>
+            </div>
+
+            <aside class="lesson-controls">
+              <article class="control-block">
+                <div>
+                  <h2>Input</h2>
+                  <p>入力を変えると、同じシステムでも出力がどう変わるか見えます。</p>
+                </div>
+                <div class="segmented" role="group" aria-label="LTI入力信号">
+                  <button class="active" type="button" data-lti-input="impulse">Impulse</button>
+                  <button type="button" data-lti-input="step">Step</button>
+                  <button type="button" data-lti-input="burst">Burst</button>
+                </div>
+              </article>
+
+              <article class="control-block">
+                <div>
+                  <h2>System</h2>
+                  <p>インパルス応答を変えると、畳み込みと周波数応答が同時に変わります。</p>
+                </div>
+                <div class="segmented" role="group" aria-label="LTIシステム">
+                  <button class="active" type="button" data-lti-system="average">Average</button>
+                  <button type="button" data-lti-system="echo">Echo</button>
+                  <button type="button" data-lti-system="edge">Edge</button>
+                </div>
+              </article>
+
+              <article class="control-block sliders">
+                <label>
+                  <span>Probe n</span>
+                  <output id="ltiProbeValue">16</output>
+                  <input id="ltiProbe" type="range" min="0" max="47" value="16" step="1">
+                </label>
+              </article>
+
               <article class="control-block concept-card">
-                <h2>Time Convolution</h2>
+                <h2>Core Relation</h2>
                 <div class="equation-block">\[
                   y[n] = \sum_{k=-\infty}^{\infty} x[k]h[n-k]
                 \]</div>
-                <p>入力波形をずらしながら、インパルス応答と重ねて足し合わせます。</p>
-              </article>
-              <article class="control-block concept-card">
-                <h2>Frequency Response</h2>
                 <div class="equation-block">\[
                   Y(e^{j\omega}) = X(e^{j\omega})H(e^{j\omega})
                 \]</div>
-                <p>畳み込みは周波数領域では掛け算になります。音色変化を見せる中心です。</p>
               </article>
             </aside>
           </section>
         </section>
 
         <section class="module-view" data-module="filters">
-          <section class="concept-layout" aria-label="FIR IIR and stability roadmap">
-            <article class="panel concept-hero">
-              <div class="panel-head">
-                <div>
-                  <h2>FIR/IIR & Stability</h2>
-                  <p>有限長の畳み込み、フィードバック、極と零点、安定性をまとめて扱います。</p>
+          <section class="lab-layout" aria-label="FIR IIR and stability interactive lab">
+            <div class="lesson-stack">
+              <article class="panel">
+                <div class="panel-head">
+                  <div>
+                    <h2>FIR/IIR & Stability</h2>
+                    <p>インパルス応答、周波数応答、極零配置を同時に動かして比較します。</p>
+                  </div>
+                  <span id="stabilityStatus">Stable</span>
                 </div>
-                <span>poles / zeros</span>
-              </div>
-              <div class="filter-compare">
-                <div>
-                  <span class="metric-label">FIR</span>
-                  <strong class="equation">\[
-                    y[n] = \sum_{k=0}^{M} b_k x[n-k]
-                  \]</strong>
-                  <p>過去の入力だけを使う。インパルス応答は有限長で、安定性を扱いやすい。</p>
-                </div>
-                <div>
-                  <span class="metric-label">IIR</span>
-                  <strong class="equation">\[
-                    y[n] = \sum_{k=0}^{M} b_k x[n-k] - \sum_{k=1}^{N} a_k y[n-k]
-                  \]</strong>
-                  <p>過去の出力を戻す。少ない係数で強い特性を作れるが、安定性の確認が重要。</p>
-                </div>
-              </div>
-            </article>
+                <canvas id="filterTimeCanvas" width="1400" height="420" aria-label="FIRとIIRのインパルス応答表示"></canvas>
+              </article>
 
-            <aside class="concept-list">
-              <article class="control-block concept-card">
-                <h2>Transfer Function</h2>
-                <div class="equation-block">\[
-                  H(z)=\frac{\sum_{k=0}^{M}b_k z^{-k}}{1+\sum_{k=1}^{N}a_k z^{-k}}
-                \]</div>
-                <p>差分方程式をz変換してH(z)で表すと、FIR/IIRの構造が同じ図で見えます。</p>
+              <section class="filter-grid">
+                <article class="panel">
+                  <div class="panel-head">
+                    <h2>Pole-Zero View</h2>
+                    <span>unit circle</span>
+                  </div>
+                  <canvas id="poleZeroCanvas" width="700" height="520" aria-label="極零配置と単位円表示"></canvas>
+                </article>
+
+                <article class="panel">
+                  <div class="panel-head">
+                    <h2>Frequency Response</h2>
+                    <span>\(|H(e^{j\omega})|\)</span>
+                  </div>
+                  <canvas id="filterFreqCanvas" width="700" height="520" aria-label="FIRとIIRの周波数応答表示"></canvas>
+                </article>
+              </section>
+            </div>
+
+            <aside class="lesson-controls">
+              <article class="control-block">
+                <div>
+                  <h2>Filter Type</h2>
+                  <p>FIRは有限長、IIRはフィードバックで長く尾を引きます。</p>
+                </div>
+                <div class="segmented" role="group" aria-label="フィルタ種別">
+                  <button class="active" type="button" data-filter-family="fir">FIR</button>
+                  <button type="button" data-filter-family="iir">IIR</button>
+                </div>
               </article>
-              <article class="control-block concept-card">
-                <h2>Stability</h2>
-                <div class="equation-block">\[
-                  \text{stable} \Longleftrightarrow |p_i| < 1 \quad \text{for all poles } p_i
-                \]</div>
-                <p>離散時間IIRでは極が単位円の内側にあると安定。外に出ると発散します。</p>
+
+              <article class="control-block sliders">
+                <label>
+                  <span>FIR taps</span>
+                  <output id="firTapValue">5</output>
+                  <input id="firTaps" type="range" min="2" max="16" value="5" step="1">
+                </label>
+                <label>
+                  <span>IIR pole radius</span>
+                  <output id="poleRadiusValue">0.82</output>
+                  <input id="poleRadius" type="range" min="0" max="1.2" value="0.82" step="0.01">
+                </label>
               </article>
+
               <article class="control-block concept-card">
-                <h2>Design View</h2>
+                <h2>Difference Equations</h2>
                 <div class="equation-block">\[
-                  \{a_k,b_k\} \rightarrow h[n] \rightarrow H(e^{j\omega}) \rightarrow \text{sound}
+                  \mathrm{FIR}: \quad y[n] = \sum_{k=0}^{M} b_k x[n-k]
                 \]</div>
-                <p>係数、インパルス応答、周波数応答、極零配置を連動させる画面に発展させます。</p>
+                <div class="equation-block">\[
+                  \mathrm{IIR}: \quad y[n] = x[n] + r y[n-1]
+                \]</div>
+                <div class="equation-block">\[
+                  \text{stable} \Longleftrightarrow |r| < 1
+                \]</div>
               </article>
             </aside>
           </section>
         </section>
       </section>
     </main>
-    <script src="script.js?v=20260615-sinc-alias"></script>
+    <script src="script.js?v=20260615-systems-lab"></script>
   </body>
 </html>

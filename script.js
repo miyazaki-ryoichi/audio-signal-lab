@@ -21,10 +21,23 @@ const waveCanvas = document.querySelector("#waveCanvas");
 const spectrumCanvas = document.querySelector("#spectrumCanvas");
 const samplingCanvas = document.querySelector("#samplingCanvas");
 const aliasCanvas = document.querySelector("#aliasCanvas");
+const ltiTimeCanvas = document.querySelector("#ltiTimeCanvas");
+const ltiFreqCanvas = document.querySelector("#ltiFreqCanvas");
+const filterTimeCanvas = document.querySelector("#filterTimeCanvas");
+const poleZeroCanvas = document.querySelector("#poleZeroCanvas");
+const filterFreqCanvas = document.querySelector("#filterFreqCanvas");
 const signalFreq = document.querySelector("#signalFreq");
 const lessonSampleRate = document.querySelector("#lessonSampleRate");
 const timeWindow = document.querySelector("#timeWindow");
 const showSinc = document.querySelector("#showSinc");
+const ltiProbe = document.querySelector("#ltiProbe");
+const ltiProbeValue = document.querySelector("#ltiProbeValue");
+const ltiSystemName = document.querySelector("#ltiSystemName");
+const firTaps = document.querySelector("#firTaps");
+const firTapValue = document.querySelector("#firTapValue");
+const poleRadius = document.querySelector("#poleRadius");
+const poleRadiusValue = document.querySelector("#poleRadiusValue");
+const stabilityStatus = document.querySelector("#stabilityStatus");
 const signalFreqValue = document.querySelector("#signalFreqValue");
 const lessonSampleRateValue = document.querySelector("#lessonSampleRateValue");
 const timeWindowValue = document.querySelector("#timeWindowValue");
@@ -35,7 +48,20 @@ const spectrogramStatus = document.querySelector("#spectrogramStatus");
 const samplingNote = document.querySelector("#samplingNote");
 const moduleButtons = [...document.querySelectorAll("[data-module-target]")];
 const moduleViews = [...document.querySelectorAll("[data-module]")];
-const canvases = [waveCanvas, spectrumCanvas, samplingCanvas, aliasCanvas];
+const ltiInputButtons = [...document.querySelectorAll("[data-lti-input]")];
+const ltiSystemButtons = [...document.querySelectorAll("[data-lti-system]")];
+const filterFamilyButtons = [...document.querySelectorAll("[data-filter-family]")];
+const canvases = [
+  waveCanvas,
+  spectrumCanvas,
+  samplingCanvas,
+  aliasCanvas,
+  ltiTimeCanvas,
+  ltiFreqCanvas,
+  filterTimeCanvas,
+  poleZeroCanvas,
+  filterFreqCanvas,
+];
 
 const state = {
   context: null,
@@ -43,6 +69,9 @@ const state = {
   processedBuffer: null,
   currentSource: null,
   filterType: "lowpass",
+  ltiInput: "impulse",
+  ltiSystem: "average",
+  filterFamily: "fir",
   objectUrl: null,
 };
 
@@ -523,6 +552,301 @@ function getAliasFrequency(freq, sampleRate) {
   return Math.min(folded, sampleRate / 2);
 }
 
+function drawLtiLab() {
+  const x = makeLtiInput(state.ltiInput);
+  const h = makeLtiImpulse(state.ltiSystem);
+  const y = convolve(x, h).slice(0, x.length);
+  const probe = Number(ltiProbe.value);
+
+  ltiProbeValue.value = probe;
+  ltiSystemName.textContent = {
+    average: "Moving average",
+    echo: "Echo",
+    edge: "Edge detector",
+  }[state.ltiSystem];
+
+  drawLtiTimeDomain(x, h, y, probe);
+  drawLtiFrequencyDomain(x, h, y);
+}
+
+function makeLtiInput(type) {
+  const length = 48;
+  const x = new Array(length).fill(0);
+  if (type === "impulse") {
+    x[8] = 1;
+  } else if (type === "step") {
+    for (let i = 8; i < length; i += 1) x[i] = 1;
+  } else {
+    for (let i = 8; i < 28; i += 1) {
+      const window = Math.sin(Math.PI * (i - 8) / 20);
+      x[i] = Math.sin(2 * Math.PI * 0.13 * i) * window;
+    }
+  }
+  return x;
+}
+
+function makeLtiImpulse(type) {
+  if (type === "echo") return [1, 0, 0, 0, 0, 0.55, 0, 0, 0, 0.28];
+  if (type === "edge") return [1, -1];
+  return [0.2, 0.2, 0.2, 0.2, 0.2];
+}
+
+function convolve(a, b) {
+  const y = new Array(a.length + b.length - 1).fill(0);
+  for (let i = 0; i < a.length; i += 1) {
+    for (let j = 0; j < b.length; j += 1) {
+      y[i + j] += a[i] * b[j];
+    }
+  }
+  return y;
+}
+
+function drawLtiTimeDomain(x, h, y, probe) {
+  fitCanvas(ltiTimeCanvas);
+  const ctx = ltiTimeCanvas.getContext("2d");
+  const { width, height } = ltiTimeCanvas;
+  drawGrid(ctx, width, height);
+  const hDisplay = h.concat(new Array(Math.max(0, x.length - h.length)).fill(0));
+
+  const left = width * 0.07;
+  const right = width * 0.04;
+  const laneHeight = height * 0.24;
+  const gap = height * 0.06;
+  const lanes = [
+    { label: "input x[n]", data: x, color: "#0b4f6c", top: height * 0.08 },
+    { label: "impulse response h[n]", data: hDisplay, color: "#d95d39", top: height * 0.08 + laneHeight + gap },
+    { label: "output y[n] = x[n] * h[n]", data: y, color: "#2b8a3e", top: height * 0.08 + 2 * (laneHeight + gap) },
+  ];
+
+  lanes.forEach((lane) => {
+    drawStemSeries(ctx, lane.data, {
+      left,
+      top: lane.top,
+      width: width - left - right,
+      height: laneHeight,
+      color: lane.color,
+      label: lane.label,
+      highlightIndex: lane.label.startsWith("output") ? probe : -1,
+    });
+  });
+
+  ctx.fillStyle = "#172121";
+  ctx.font = "800 22px system-ui";
+  ctx.fillText(`At n = ${probe}, y[n] is the sum of shifted products`, left, height - height * 0.035);
+}
+
+function drawStemSeries(ctx, data, options) {
+  const { left, top, width, height, color, label, highlightIndex = -1 } = options;
+  const maxAbs = Math.max(0.25, ...data.map((value) => Math.abs(value)));
+  const centerY = top + height * 0.54;
+  const xStep = width / Math.max(1, data.length - 1);
+
+  ctx.strokeStyle = "#9aa6a1";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(left, centerY);
+  ctx.lineTo(left + width, centerY);
+  ctx.stroke();
+
+  ctx.fillStyle = "#172121";
+  ctx.font = "800 21px system-ui";
+  ctx.fillText(label, left, top + 22);
+
+  data.forEach((value, index) => {
+    const x = left + index * xStep;
+    const y = centerY - (value / maxAbs) * height * 0.38;
+    const isHighlight = index === highlightIndex;
+    ctx.strokeStyle = isHighlight ? "#172121" : color;
+    ctx.fillStyle = isHighlight ? "#172121" : color;
+    ctx.lineWidth = isHighlight ? 4 : 2;
+    ctx.beginPath();
+    ctx.moveTo(x, centerY);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(x, y, isHighlight ? 6 : 4, 0, Math.PI * 2);
+    ctx.fill();
+  });
+}
+
+function drawLtiFrequencyDomain(x, h, y) {
+  fitCanvas(ltiFreqCanvas);
+  const ctx = ltiFreqCanvas.getContext("2d");
+  const { width, height } = ltiFreqCanvas;
+  drawGrid(ctx, width, height);
+
+  const curves = [
+    { label: "|X|", data: getMagnitudeResponse(x), color: "#0b4f6c" },
+    { label: "|H|", data: getMagnitudeResponse(h), color: "#d95d39" },
+    { label: "|Y|", data: getMagnitudeResponse(y), color: "#2b8a3e" },
+  ];
+  const maxValue = Math.max(0.001, ...curves.flatMap((curve) => curve.data));
+  const rect = {
+    left: width * 0.08,
+    top: height * 0.12,
+    width: width * 0.86,
+    height: height * 0.68,
+  };
+
+  drawFrequencyAxes(ctx, rect, "0", "π");
+  curves.forEach((curve, index) => {
+    drawResponseCurve(ctx, curve.data, rect, curve.color, maxValue, curve.label, index);
+  });
+}
+
+function getMagnitudeResponse(signal, bins = 160) {
+  const values = [];
+  for (let bin = 0; bin < bins; bin += 1) {
+    const omega = (Math.PI * bin) / (bins - 1);
+    let real = 0;
+    let imag = 0;
+    signal.forEach((sample, n) => {
+      real += sample * Math.cos(-omega * n);
+      imag += sample * Math.sin(-omega * n);
+    });
+    values.push(Math.sqrt(real * real + imag * imag));
+  }
+  return values;
+}
+
+function drawFrequencyAxes(ctx, rect, leftLabel, rightLabel) {
+  ctx.strokeStyle = "#9aa6a1";
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(rect.left, rect.top, rect.width, rect.height);
+  ctx.fillStyle = "#5f6b66";
+  ctx.font = "800 20px system-ui";
+  ctx.fillText(leftLabel, rect.left, rect.top + rect.height + 34);
+  ctx.fillText(rightLabel, rect.left + rect.width - 18, rect.top + rect.height + 34);
+  ctx.fillText("magnitude", rect.left, rect.top - 16);
+}
+
+function drawResponseCurve(ctx, data, rect, color, maxValue, label, index) {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  data.forEach((value, i) => {
+    const x = rect.left + (i / (data.length - 1)) * rect.width;
+    const y = rect.top + rect.height - (value / maxValue) * rect.height * 0.9;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+  ctx.fillStyle = color;
+  ctx.font = "800 22px system-ui";
+  ctx.fillText(label, rect.left + 16 + index * 80, rect.top + 34);
+}
+
+function drawFilterLab() {
+  const taps = Number(firTaps.value);
+  const radius = Number(poleRadius.value);
+  const isFir = state.filterFamily === "fir";
+  const impulse = isFir ? makeFirImpulse(taps) : makeIirImpulse(radius, 56);
+
+  firTapValue.value = taps;
+  poleRadiusValue.value = radius.toFixed(2);
+  stabilityStatus.textContent = isFir || radius < 1 ? "Stable" : "Unstable";
+  stabilityStatus.style.color = isFir || radius < 1 ? "#0f766e" : "#d95d39";
+
+  drawFilterImpulse(impulse, isFir);
+  drawPoleZero(isFir, taps, radius);
+  drawFilterFrequency(impulse);
+}
+
+function makeFirImpulse(taps) {
+  return Array.from({ length: taps }, () => 1 / taps);
+}
+
+function makeIirImpulse(radius, length) {
+  return Array.from({ length }, (_, n) => radius ** n);
+}
+
+function drawFilterImpulse(impulse, isFir) {
+  fitCanvas(filterTimeCanvas);
+  const ctx = filterTimeCanvas.getContext("2d");
+  const { width, height } = filterTimeCanvas;
+  drawGrid(ctx, width, height);
+  drawStemSeries(ctx, impulse, {
+    left: width * 0.08,
+    top: height * 0.16,
+    width: width * 0.86,
+    height: height * 0.62,
+    color: isFir ? "#0b4f6c" : "#d95d39",
+    label: isFir ? "FIR impulse response: finite tail" : "IIR impulse response: feedback tail",
+  });
+}
+
+function drawPoleZero(isFir, taps, radius) {
+  fitCanvas(poleZeroCanvas);
+  const ctx = poleZeroCanvas.getContext("2d");
+  const { width, height } = poleZeroCanvas;
+  drawGrid(ctx, width, height);
+
+  const size = Math.min(width, height) * 0.62;
+  const cx = width / 2;
+  const cy = height / 2;
+  const scale = size / 2;
+
+  ctx.strokeStyle = "#9aa6a1";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(cx, cy, scale, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(cx - scale * 1.18, cy);
+  ctx.lineTo(cx + scale * 1.18, cy);
+  ctx.moveTo(cx, cy - scale * 1.18);
+  ctx.lineTo(cx, cy + scale * 1.18);
+  ctx.stroke();
+
+  if (isFir) {
+    for (let m = 1; m < taps; m += 1) {
+      const angle = (2 * Math.PI * m) / taps;
+      drawZero(ctx, cx + Math.cos(angle) * scale, cy - Math.sin(angle) * scale);
+    }
+  } else {
+    drawPole(ctx, cx + radius * scale, cy);
+  }
+
+  ctx.fillStyle = "#172121";
+  ctx.font = "800 22px system-ui";
+  ctx.fillText(isFir ? "zeros on unit circle" : `pole radius r = ${radius.toFixed(2)}`, width * 0.08, height * 0.12);
+}
+
+function drawZero(ctx, x, y) {
+  ctx.strokeStyle = "#0b4f6c";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(x, y, 9, 0, Math.PI * 2);
+  ctx.stroke();
+}
+
+function drawPole(ctx, x, y) {
+  ctx.strokeStyle = "#d95d39";
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(x - 10, y - 10);
+  ctx.lineTo(x + 10, y + 10);
+  ctx.moveTo(x + 10, y - 10);
+  ctx.lineTo(x - 10, y + 10);
+  ctx.stroke();
+}
+
+function drawFilterFrequency(impulse) {
+  fitCanvas(filterFreqCanvas);
+  const ctx = filterFreqCanvas.getContext("2d");
+  const { width, height } = filterFreqCanvas;
+  drawGrid(ctx, width, height);
+  const response = getMagnitudeResponse(impulse);
+  const rect = {
+    left: width * 0.12,
+    top: height * 0.14,
+    width: width * 0.78,
+    height: height * 0.66,
+  };
+  drawFrequencyAxes(ctx, rect, "0", "π");
+  drawResponseCurve(ctx, response, rect, "#2b8a3e", Math.max(...response, 0.001), "|H|", 0);
+}
+
 function fitCanvas(canvas) {
   const rect = canvas.getBoundingClientRect();
   const scale = window.devicePixelRatio || 1;
@@ -550,6 +874,8 @@ function activateModule(moduleName) {
     drawWaveform();
     drawSpectrum();
     drawSamplingLesson();
+    drawLtiLab();
+    drawFilterLab();
   });
 }
 
@@ -713,6 +1039,34 @@ filterButtons.forEach((button) => {
   control.addEventListener("input", drawSamplingLesson);
 });
 
+ltiInputButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    ltiInputButtons.forEach((item) => item.classList.toggle("active", item === button));
+    state.ltiInput = button.dataset.ltiInput;
+    drawLtiLab();
+  });
+});
+
+ltiSystemButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    ltiSystemButtons.forEach((item) => item.classList.toggle("active", item === button));
+    state.ltiSystem = button.dataset.ltiSystem;
+    drawLtiLab();
+  });
+});
+
+filterFamilyButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    filterFamilyButtons.forEach((item) => item.classList.toggle("active", item === button));
+    state.filterFamily = button.dataset.filterFamily;
+    drawFilterLab();
+  });
+});
+
+ltiProbe.addEventListener("input", drawLtiLab);
+firTaps.addEventListener("input", drawFilterLab);
+poleRadius.addEventListener("input", drawFilterLab);
+
 moduleButtons.forEach((button) => {
   button.addEventListener("click", () => {
     activateModule(button.dataset.moduleTarget);
@@ -728,10 +1082,14 @@ setEnabled(false);
 drawWaveform();
 drawSpectrum();
 drawSamplingLesson();
+drawLtiLab();
+drawFilterLab();
 
 window.addEventListener("resize", () => {
   canvases.forEach(fitCanvas);
   drawWaveform();
   drawSpectrum();
   drawSamplingLesson();
+  drawLtiLab();
+  drawFilterLab();
 });
