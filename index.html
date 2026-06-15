@@ -63,6 +63,7 @@
           <button type="button" data-module-target="sampling" aria-pressed="false">Sampling Theorem</button>
           <button type="button" data-module-target="lti" aria-pressed="false">LTI Systems</button>
           <button type="button" data-module-target="filters" aria-pressed="false">FIR/IIR & Stability</button>
+          <button type="button" data-module-target="windowing" aria-pressed="false">Window Functions</button>
         </nav>
 
         <section class="module-view active" data-module="analyzer">
@@ -342,8 +343,88 @@
             </aside>
           </section>
         </section>
+
+        <section class="module-view" data-module="windowing">
+          <section class="lab-layout" aria-label="Window functions and spectral leakage lab">
+            <div class="lesson-stack">
+              <article class="panel">
+                <div class="panel-head">
+                  <div>
+                    <h2>Window Shape</h2>
+                    <p>時間領域で端をどう扱うかが、周波数領域のメインローブとサイドローブを決めます。</p>
+                  </div>
+                  <span id="windowName">Hann</span>
+                </div>
+                <canvas id="windowTimeCanvas" width="1400" height="360" aria-label="窓関数の時間領域表示"></canvas>
+              </article>
+
+              <section class="filter-grid">
+                <article class="panel">
+                  <div class="panel-head">
+                    <div>
+                      <h2>Window Spectrum</h2>
+                      <p>メインローブ幅とサイドローブ高さを見ます。</p>
+                    </div>
+                    <span id="lobeReadout">main 4 bins</span>
+                  </div>
+                  <canvas id="windowResponseCanvas" width="700" height="520" aria-label="窓関数の周波数応答表示"></canvas>
+                </article>
+
+                <article class="panel">
+                  <div class="panel-head">
+                    <div>
+                      <h2>Spectral Leakage</h2>
+                      <p>ビンに乗らない正弦波のエネルギーが周囲に漏れる様子です。</p>
+                    </div>
+                    <span id="leakageReadout">offset 0.30 bin</span>
+                  </div>
+                  <canvas id="leakageCanvas" width="700" height="520" aria-label="スペクトル漏れ表示"></canvas>
+                </article>
+              </section>
+            </div>
+
+            <aside class="lesson-controls">
+              <article class="control-block">
+                <div>
+                  <h2>Window</h2>
+                  <p>窓ごとのトレードオフを比較します。</p>
+                </div>
+                <div class="segmented" role="group" aria-label="窓関数">
+                  <button type="button" data-window-type="rect">Rect</button>
+                  <button class="active" type="button" data-window-type="hann">Hann</button>
+                  <button type="button" data-window-type="hamming">Hamming</button>
+                  <button type="button" data-window-type="blackman">Blackman</button>
+                </div>
+              </article>
+
+              <article class="control-block sliders">
+                <label>
+                  <span>Tone bin</span>
+                  <output id="toneBinValue">7.30</output>
+                  <input id="toneBin" type="range" min="3" max="18" value="7.3" step="0.05">
+                </label>
+                <label>
+                  <span>FFT size</span>
+                  <output id="windowSizeValue">64</output>
+                  <input id="windowSize" type="range" min="32" max="128" value="64" step="32">
+                </label>
+              </article>
+
+              <article class="control-block concept-card">
+                <h2>Trade-off</h2>
+                <div class="equation-block">\[
+                  x_w[n] = x[n]w[n]
+                \]</div>
+                <div class="equation-block">\[
+                  X_w(e^{j\omega}) = X(e^{j\omega}) * W(e^{j\omega})
+                \]</div>
+                <p>狭いメインローブは近い周波数を分けやすい一方、サイドローブが高いと遠くまで漏れが残ります。</p>
+              </article>
+            </aside>
+          </section>
+        </section>
       </section>
     </main>
-    <script src="script.js?v=20260615-systems-lab"></script>
+    <script src="script.js?v=20260615-windowing"></script>
   </body>
 </html>

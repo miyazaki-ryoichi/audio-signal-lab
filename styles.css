@@ -280,8 +280,14 @@ h2 {
 
 #ltiFreqCanvas,
 #poleZeroCanvas,
-#filterFreqCanvas {
+#filterFreqCanvas,
+#windowResponseCanvas,
+#leakageCanvas {
   height: clamp(260px, 32vw, 380px);
+}
+
+#windowTimeCanvas {
+  height: clamp(240px, 28vw, 340px);
 }
 
 .lesson-controls {

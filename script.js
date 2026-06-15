@@ -26,6 +26,9 @@ const ltiFreqCanvas = document.querySelector("#ltiFreqCanvas");
 const filterTimeCanvas = document.querySelector("#filterTimeCanvas");
 const poleZeroCanvas = document.querySelector("#poleZeroCanvas");
 const filterFreqCanvas = document.querySelector("#filterFreqCanvas");
+const windowTimeCanvas = document.querySelector("#windowTimeCanvas");
+const windowResponseCanvas = document.querySelector("#windowResponseCanvas");
+const leakageCanvas = document.querySelector("#leakageCanvas");
 const signalFreq = document.querySelector("#signalFreq");
 const lessonSampleRate = document.querySelector("#lessonSampleRate");
 const timeWindow = document.querySelector("#timeWindow");
@@ -38,6 +41,13 @@ const firTapValue = document.querySelector("#firTapValue");
 const poleRadius = document.querySelector("#poleRadius");
 const poleRadiusValue = document.querySelector("#poleRadiusValue");
 const stabilityStatus = document.querySelector("#stabilityStatus");
+const windowName = document.querySelector("#windowName");
+const lobeReadout = document.querySelector("#lobeReadout");
+const leakageReadout = document.querySelector("#leakageReadout");
+const toneBin = document.querySelector("#toneBin");
+const toneBinValue = document.querySelector("#toneBinValue");
+const windowSize = document.querySelector("#windowSize");
+const windowSizeValue = document.querySelector("#windowSizeValue");
 const signalFreqValue = document.querySelector("#signalFreqValue");
 const lessonSampleRateValue = document.querySelector("#lessonSampleRateValue");
 const timeWindowValue = document.querySelector("#timeWindowValue");
@@ -51,6 +61,7 @@ const moduleViews = [...document.querySelectorAll("[data-module]")];
 const ltiInputButtons = [...document.querySelectorAll("[data-lti-input]")];
 const ltiSystemButtons = [...document.querySelectorAll("[data-lti-system]")];
 const filterFamilyButtons = [...document.querySelectorAll("[data-filter-family]")];
+const windowTypeButtons = [...document.querySelectorAll("[data-window-type]")];
 const canvases = [
   waveCanvas,
   spectrumCanvas,
@@ -61,6 +72,9 @@ const canvases = [
   filterTimeCanvas,
   poleZeroCanvas,
   filterFreqCanvas,
+  windowTimeCanvas,
+  windowResponseCanvas,
+  leakageCanvas,
 ];
 
 const state = {
@@ -72,6 +86,7 @@ const state = {
   ltiInput: "impulse",
   ltiSystem: "average",
   filterFamily: "fir",
+  windowType: "hann",
   objectUrl: null,
 };
 
@@ -847,6 +862,244 @@ function drawFilterFrequency(impulse) {
   drawResponseCurve(ctx, response, rect, "#2b8a3e", Math.max(...response, 0.001), "|H|", 0);
 }
 
+function drawWindowLab() {
+  const size = Number(windowSize.value);
+  const bin = Number(toneBin.value);
+  const window = makeWindow(state.windowType, size);
+  const lobe = getWindowLobeInfo(state.windowType);
+
+  windowName.textContent = lobe.name;
+  lobeReadout.textContent = `main ${lobe.mainBins} bins / side ${lobe.sideDb} dB`;
+  leakageReadout.textContent = `offset ${(bin - Math.round(bin)).toFixed(2)} bin`;
+  toneBinValue.value = bin.toFixed(2);
+  windowSizeValue.value = size;
+
+  drawWindowShape(window, lobe);
+  drawWindowResponse(window, lobe);
+  drawLeakageSpectrum(window, bin);
+}
+
+function makeWindow(type, size) {
+  return Array.from({ length: size }, (_, n) => {
+    if (size === 1) return 1;
+    const phase = (2 * Math.PI * n) / (size - 1);
+    if (type === "hann") return 0.5 - 0.5 * Math.cos(phase);
+    if (type === "hamming") return 0.54 - 0.46 * Math.cos(phase);
+    if (type === "blackman") return 0.42 - 0.5 * Math.cos(phase) + 0.08 * Math.cos(2 * phase);
+    return 1;
+  });
+}
+
+function getWindowLobeInfo(type) {
+  const info = {
+    rect: { name: "Rectangular", mainBins: 2, sideDb: "-13" },
+    hann: { name: "Hann", mainBins: 4, sideDb: "-31" },
+    hamming: { name: "Hamming", mainBins: 4, sideDb: "-43" },
+    blackman: { name: "Blackman", mainBins: 6, sideDb: "-58" },
+  };
+  return info[type] || info.hann;
+}
+
+function drawWindowShape(window, info) {
+  fitCanvas(windowTimeCanvas);
+  const ctx = windowTimeCanvas.getContext("2d");
+  const { width, height } = windowTimeCanvas;
+  drawGrid(ctx, width, height);
+  const rect = {
+    left: width * 0.07,
+    top: height * 0.16,
+    width: width * 0.88,
+    height: height * 0.62,
+  };
+
+  ctx.strokeStyle = "#9aa6a1";
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(rect.left, rect.top, rect.width, rect.height);
+  ctx.strokeStyle = "#0b4f6c";
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  window.forEach((value, index) => {
+    const x = rect.left + (index / (window.length - 1)) * rect.width;
+    const y = rect.top + rect.height - value * rect.height * 0.92;
+    if (index === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+
+  ctx.fillStyle = "#172121";
+  ctx.font = "800 22px system-ui";
+  ctx.fillText(info.name, rect.left, rect.top - 20);
+  ctx.fillStyle = "#5f6b66";
+  ctx.font = "700 20px system-ui";
+  ctx.fillText("time-domain taper w[n]", rect.left + rect.width - 250, rect.top + rect.height + 34);
+}
+
+function drawWindowResponse(window, info) {
+  fitCanvas(windowResponseCanvas);
+  const ctx = windowResponseCanvas.getContext("2d");
+  const { width, height } = windowResponseCanvas;
+  drawGrid(ctx, width, height);
+
+  const response = getDtftDb(window, 1024);
+  const rect = {
+    left: width * 0.13,
+    top: height * 0.14,
+    width: width * 0.78,
+    height: height * 0.68,
+  };
+  drawDbAxes(ctx, rect, "0 bin", "12 bins");
+  drawDbCurve(ctx, response.slice(0, 260), rect, "#0b4f6c", -90, 0);
+  drawMainLobeMarker(ctx, rect, info.mainBins / 2, 12, "main lobe");
+  drawSideLobeBand(ctx, rect, Number(info.sideDb), -90, 0);
+}
+
+function getDtftDb(signal, bins) {
+  const magnitudes = [];
+  for (let i = 0; i < bins; i += 1) {
+    const omega = (Math.PI * i) / (bins - 1);
+    let real = 0;
+    let imag = 0;
+    signal.forEach((sample, n) => {
+      real += sample * Math.cos(-omega * n);
+      imag += sample * Math.sin(-omega * n);
+    });
+    magnitudes.push(Math.sqrt(real * real + imag * imag));
+  }
+  const maxValue = Math.max(...magnitudes, 1e-12);
+  return magnitudes.map((value) => 20 * Math.log10(Math.max(value / maxValue, 1e-8)));
+}
+
+function drawLeakageSpectrum(window, bin) {
+  fitCanvas(leakageCanvas);
+  const ctx = leakageCanvas.getContext("2d");
+  const { width, height } = leakageCanvas;
+  drawGrid(ctx, width, height);
+
+  const samples = window.map((w, n) => Math.sin((2 * Math.PI * bin * n) / window.length) * w);
+  const spectrum = getDftDb(samples).slice(0, window.length / 2);
+  const rect = {
+    left: width * 0.13,
+    top: height * 0.14,
+    width: width * 0.78,
+    height: height * 0.68,
+  };
+  drawDbAxes(ctx, rect, "0", "Nyquist");
+  drawSpectrumBars(ctx, spectrum, rect, -90, 0);
+  drawToneMarker(ctx, rect, bin, spectrum.length);
+}
+
+function getDftDb(signal) {
+  const magnitudes = [];
+  const size = signal.length;
+  for (let k = 0; k < size; k += 1) {
+    let real = 0;
+    let imag = 0;
+    for (let n = 0; n < size; n += 1) {
+      const angle = (-2 * Math.PI * k * n) / size;
+      real += signal[n] * Math.cos(angle);
+      imag += signal[n] * Math.sin(angle);
+    }
+    magnitudes.push(Math.sqrt(real * real + imag * imag));
+  }
+  const maxValue = Math.max(...magnitudes, 1e-12);
+  return magnitudes.map((value) => 20 * Math.log10(Math.max(value / maxValue, 1e-8)));
+}
+
+function drawDbAxes(ctx, rect, leftLabel, rightLabel) {
+  ctx.strokeStyle = "#9aa6a1";
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(rect.left, rect.top, rect.width, rect.height);
+  ctx.fillStyle = "#5f6b66";
+  ctx.font = "800 19px system-ui";
+  [-80, -60, -40, -20, 0].forEach((db) => {
+    const y = mapDbToY(db, rect, -90, 0);
+    ctx.strokeStyle = "rgba(154, 166, 161, 0.35)";
+    ctx.beginPath();
+    ctx.moveTo(rect.left, y);
+    ctx.lineTo(rect.left + rect.width, y);
+    ctx.stroke();
+    ctx.fillStyle = "#5f6b66";
+    ctx.fillText(`${db}`, rect.left - 48, y + 6);
+  });
+  ctx.fillText(leftLabel, rect.left, rect.top + rect.height + 34);
+  ctx.fillText(rightLabel, rect.left + rect.width - 74, rect.top + rect.height + 34);
+  ctx.fillText("dB", rect.left - 42, rect.top - 16);
+}
+
+function drawDbCurve(ctx, data, rect, color, minDb, maxDb) {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  data.forEach((db, index) => {
+    const x = rect.left + (index / (data.length - 1)) * rect.width;
+    const y = mapDbToY(db, rect, minDb, maxDb);
+    if (index === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+}
+
+function drawSpectrumBars(ctx, data, rect, minDb, maxDb) {
+  const barWidth = rect.width / data.length;
+  data.forEach((db, index) => {
+    const x = rect.left + index * barWidth;
+    const y = mapDbToY(db, rect, minDb, maxDb);
+    const colorStrength = Math.max(0.18, (db - minDb) / (maxDb - minDb));
+    ctx.fillStyle = `rgba(217, 93, 57, ${colorStrength})`;
+    ctx.fillRect(x, y, Math.max(2, barWidth * 0.78), rect.top + rect.height - y);
+  });
+}
+
+function drawMainLobeMarker(ctx, rect, halfWidthBins, visibleBins, label) {
+  const x = rect.left + (halfWidthBins / visibleBins) * rect.width;
+  ctx.strokeStyle = "#d95d39";
+  ctx.lineWidth = 2;
+  ctx.setLineDash([8, 6]);
+  ctx.beginPath();
+  ctx.moveTo(x, rect.top);
+  ctx.lineTo(x, rect.top + rect.height);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = "#d95d39";
+  ctx.font = "800 18px system-ui";
+  ctx.fillText(label, x + 8, rect.top + 26);
+}
+
+function drawSideLobeBand(ctx, rect, sideDb, minDb, maxDb) {
+  const y = mapDbToY(sideDb, rect, minDb, maxDb);
+  ctx.strokeStyle = "#2b8a3e";
+  ctx.lineWidth = 2;
+  ctx.setLineDash([6, 6]);
+  ctx.beginPath();
+  ctx.moveTo(rect.left, y);
+  ctx.lineTo(rect.left + rect.width, y);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = "#2b8a3e";
+  ctx.font = "800 18px system-ui";
+  ctx.fillText(`side lobe ${sideDb} dB`, rect.left + rect.width * 0.48, y - 8);
+}
+
+function drawToneMarker(ctx, rect, bin, binCount) {
+  const x = rect.left + (bin / binCount) * rect.width;
+  ctx.strokeStyle = "#172121";
+  ctx.lineWidth = 2;
+  ctx.setLineDash([8, 6]);
+  ctx.beginPath();
+  ctx.moveTo(x, rect.top);
+  ctx.lineTo(x, rect.top + rect.height);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = "#172121";
+  ctx.font = "800 18px system-ui";
+  ctx.fillText(`tone ${bin.toFixed(2)} bins`, Math.min(x + 8, rect.left + rect.width - 150), rect.top + 26);
+}
+
+function mapDbToY(db, rect, minDb, maxDb) {
+  const clamped = Math.max(minDb, Math.min(maxDb, db));
+  return rect.top + ((maxDb - clamped) / (maxDb - minDb)) * rect.height;
+}
+
 function fitCanvas(canvas) {
   const rect = canvas.getBoundingClientRect();
   const scale = window.devicePixelRatio || 1;
@@ -876,6 +1129,7 @@ function activateModule(moduleName) {
     drawSamplingLesson();
     drawLtiLab();
     drawFilterLab();
+    drawWindowLab();
   });
 }
 
@@ -1067,6 +1321,18 @@ ltiProbe.addEventListener("input", drawLtiLab);
 firTaps.addEventListener("input", drawFilterLab);
 poleRadius.addEventListener("input", drawFilterLab);
 
+windowTypeButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    windowTypeButtons.forEach((item) => item.classList.toggle("active", item === button));
+    state.windowType = button.dataset.windowType;
+    drawWindowLab();
+  });
+});
+
+[toneBin, windowSize].forEach((control) => {
+  control.addEventListener("input", drawWindowLab);
+});
+
 moduleButtons.forEach((button) => {
   button.addEventListener("click", () => {
     activateModule(button.dataset.moduleTarget);
@@ -1084,6 +1350,7 @@ drawSpectrum();
 drawSamplingLesson();
 drawLtiLab();
 drawFilterLab();
+drawWindowLab();
 
 window.addEventListener("resize", () => {
   canvases.forEach(fitCanvas);
@@ -1092,4 +1359,5 @@ window.addEventListener("resize", () => {
   drawSamplingLesson();
   drawLtiLab();
   drawFilterLab();
+  drawWindowLab();
 });
