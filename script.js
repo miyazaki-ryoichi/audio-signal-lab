@@ -52,6 +52,7 @@ const weakToneLevel = document.querySelector("#weakToneLevel");
 const weakToneLevelValue = document.querySelector("#weakToneLevelValue");
 const windowSize = document.querySelector("#windowSize");
 const windowSizeValue = document.querySelector("#windowSizeValue");
+const resetWindowLab = document.querySelector("#resetWindowLab");
 const signalFreqValue = document.querySelector("#signalFreqValue");
 const lessonSampleRateValue = document.querySelector("#lessonSampleRateValue");
 const timeWindowValue = document.querySelector("#timeWindowValue");
@@ -90,8 +91,16 @@ const state = {
   ltiInput: "impulse",
   ltiSystem: "average",
   filterFamily: "fir",
-  windowType: "hann",
+  windowType: "rect",
   objectUrl: null,
+};
+
+const windowDefaults = {
+  type: "rect",
+  toneBin: 7.3,
+  weakGap: 4,
+  weakLevel: -38,
+  size: 64,
 };
 
 const ensureContext = () => {
@@ -886,6 +895,18 @@ function drawWindowLab() {
   drawLeakageSpectrum(window, bin, weakGap, weakLevel);
 }
 
+function resetWindowDefaults() {
+  state.windowType = windowDefaults.type;
+  toneBin.value = String(windowDefaults.toneBin);
+  weakToneGap.value = String(windowDefaults.weakGap);
+  weakToneLevel.value = String(windowDefaults.weakLevel);
+  windowSize.value = String(windowDefaults.size);
+  windowTypeButtons.forEach((button) => {
+    button.classList.toggle("active", button.dataset.windowType === windowDefaults.type);
+  });
+  drawWindowLab();
+}
+
 function makeWindow(type, size) {
   return Array.from({ length: size }, (_, n) => {
     if (size === 1) return 1;
@@ -1381,6 +1402,8 @@ windowTypeButtons.forEach((button) => {
 [toneBin, weakToneGap, weakToneLevel, windowSize].forEach((control) => {
   control.addEventListener("input", drawWindowLab);
 });
+
+resetWindowLab.addEventListener("click", resetWindowDefaults);
 
 moduleButtons.forEach((button) => {
   button.addEventListener("click", () => {

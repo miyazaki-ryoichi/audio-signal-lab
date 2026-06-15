@@ -156,7 +156,8 @@ h2 {
 .transport button,
 .download,
 .segmented button,
-.module-nav button {
+.module-nav button,
+.reset-button {
   min-height: 42px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -171,8 +172,13 @@ h2 {
 .transport button:not(:disabled):hover,
 .download:not(.disabled):hover,
 .segmented button:hover,
-.module-nav button:hover {
+.module-nav button:hover,
+.reset-button:hover {
   border-color: var(--accent);
+}
+
+.reset-button {
+  width: 100%;
 }
 
 .transport button:disabled,

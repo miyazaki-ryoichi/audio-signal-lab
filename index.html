@@ -390,8 +390,8 @@
                   <p>窓ごとのトレードオフを比較します。</p>
                 </div>
                 <div class="segmented" role="group" aria-label="窓関数">
-                  <button type="button" data-window-type="rect">Rect</button>
-                  <button class="active" type="button" data-window-type="hann">Hann</button>
+                  <button class="active" type="button" data-window-type="rect">Rect</button>
+                  <button type="button" data-window-type="hann">Hann</button>
                   <button type="button" data-window-type="hamming">Hamming</button>
                   <button type="button" data-window-type="blackman">Blackman</button>
                 </div>
@@ -405,19 +405,20 @@
                 </label>
                 <label>
                   <span>Weak tone gap</span>
-                  <output id="weakToneGapValue">2.2 bins</output>
-                  <input id="weakToneGap" type="range" min="0.4" max="8" value="2.2" step="0.1">
+                  <output id="weakToneGapValue">4.0 bins</output>
+                  <input id="weakToneGap" type="range" min="0.4" max="8" value="4" step="0.1">
                 </label>
                 <label>
                   <span>Weak tone level</span>
-                  <output id="weakToneLevelValue">-36 dB</output>
-                  <input id="weakToneLevel" type="range" min="-60" max="-12" value="-36" step="1">
+                  <output id="weakToneLevelValue">-38 dB</output>
+                  <input id="weakToneLevel" type="range" min="-60" max="-12" value="-38" step="1">
                 </label>
                 <label>
                   <span>FFT size</span>
                   <output id="windowSizeValue">64</output>
                   <input id="windowSize" type="range" min="32" max="128" value="64" step="32">
                 </label>
+                <button id="resetWindowLab" class="reset-button" type="button">Reset leakage demo</button>
               </article>
 
               <article class="control-block concept-card">
