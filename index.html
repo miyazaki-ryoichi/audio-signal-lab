@@ -319,7 +319,7 @@
                 <label id="tapControlLabel">
                   <span id="tapControlText">FIR taps</span>
                   <output id="firTapValue">5</output>
-                  <input id="firTaps" type="range" min="2" max="32" value="5" step="1">
+                  <input id="firTaps" type="range" min="1" max="16" value="5" step="1">
                 </label>
                 <label>
                   <span>IIR pole radius</span>
@@ -334,10 +334,10 @@
                   \mathrm{FIR}: \quad y[n] = \sum_{k=0}^{M} b_k x[n-k]
                 \]</div>
                 <div class="equation-block">\[
-                  \mathrm{IIR}: \quad y[n] = x[n] + r y[n-1]
+                  \mathrm{IIR}: \quad y[n] = x[n] - \sum_{k=1}^{N} a_k y[n-k]
                 \]</div>
                 <div class="equation-block">\[
-                  \text{stable} \Longleftrightarrow |r| < 1
+                  \text{stable} \Longleftrightarrow |p_i| < 1 \quad (i=1,\dots,N)
                 \]</div>
               </article>
             </aside>

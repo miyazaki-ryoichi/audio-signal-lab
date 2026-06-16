@@ -769,17 +769,23 @@ function drawFilterLab() {
   const taps = Number(firTaps.value);
   const radius = Number(poleRadius.value);
   const isFir = state.filterFamily === "fir";
-  const iirSamples = Math.max(12, taps * 4);
-  const impulse = isFir ? makeFirImpulse(taps) : makeIirImpulse(radius, iirSamples);
+  const iirOrder = Math.max(1, Math.min(4, taps));
+  const poles = getIirPoles(iirOrder, radius);
+  const iirDenominator = getDenominatorFromPoles(poles);
+  const impulse = isFir ? makeFirImpulse(Math.max(2, taps)) : makeIirImpulse(iirDenominator, 64);
 
-  tapControlText.textContent = isFir ? "FIR taps" : "IIR visible samples";
-  firTapValue.value = isFir ? taps : iirSamples;
+  firTaps.min = isFir ? "2" : "1";
+  firTaps.max = isFir ? "16" : "4";
+  if (isFir && taps < 2) firTaps.value = "2";
+  if (!isFir && taps > 4) firTaps.value = "4";
+  tapControlText.textContent = isFir ? "FIR taps" : "IIR order";
+  firTapValue.value = isFir ? Math.max(2, taps) : iirOrder;
   poleRadiusValue.value = radius.toFixed(2);
   stabilityStatus.textContent = isFir || radius < 1 ? "Stable" : "Unstable";
   stabilityStatus.style.color = isFir || radius < 1 ? "#0f766e" : "#d95d39";
 
   drawFilterImpulse(impulse, isFir);
-  drawPoleZero(isFir, taps, radius);
+  drawPoleZero(isFir, Math.max(2, taps), radius, poles);
   drawFilterFrequency(impulse);
 }
 
@@ -787,8 +793,59 @@ function makeFirImpulse(taps) {
   return Array.from({ length: taps }, () => 1 / taps);
 }
 
-function makeIirImpulse(radius, length) {
-  return Array.from({ length }, (_, n) => radius ** n);
+function getIirPoles(order, radius) {
+  if (order === 1) return [{ re: radius, im: 0 }];
+  if (order === 2) return getPolePair(radius, 0.28 * Math.PI);
+  if (order === 3) return [{ re: radius, im: 0 }, ...getPolePair(radius, 0.35 * Math.PI)];
+  return [...getPolePair(radius, 0.24 * Math.PI), ...getPolePair(radius, 0.46 * Math.PI)];
+}
+
+function getPolePair(radius, angle) {
+  return [
+    { re: radius * Math.cos(angle), im: radius * Math.sin(angle) },
+    { re: radius * Math.cos(angle), im: -radius * Math.sin(angle) },
+  ];
+}
+
+function getDenominatorFromPoles(poles) {
+  let coeffs = [1];
+  const remaining = [...poles];
+  while (remaining.length > 0) {
+    const pole = remaining.shift();
+    if (Math.abs(pole.im) < 1e-9) {
+      coeffs = convolveReal(coeffs, [1, -pole.re]);
+    } else {
+      const pairIndex = remaining.findIndex((candidate) =>
+        Math.abs(candidate.re - pole.re) < 1e-9 && Math.abs(candidate.im + pole.im) < 1e-9
+      );
+      if (pairIndex >= 0) remaining.splice(pairIndex, 1);
+      const radiusSq = pole.re * pole.re + pole.im * pole.im;
+      coeffs = convolveReal(coeffs, [1, -2 * pole.re, radiusSq]);
+    }
+  }
+  return coeffs;
+}
+
+function convolveReal(a, b) {
+  const y = new Array(a.length + b.length - 1).fill(0);
+  for (let i = 0; i < a.length; i += 1) {
+    for (let j = 0; j < b.length; j += 1) {
+      y[i + j] += a[i] * b[j];
+    }
+  }
+  return y;
+}
+
+function makeIirImpulse(denominator, length) {
+  const impulse = new Array(length).fill(0);
+  for (let n = 0; n < length; n += 1) {
+    let value = n === 0 ? 1 : 0;
+    for (let k = 1; k < denominator.length; k += 1) {
+      if (n - k >= 0) value -= denominator[k] * impulse[n - k];
+    }
+    impulse[n] = Math.max(-8, Math.min(8, value));
+  }
+  return impulse;
 }
 
 function drawFilterImpulse(impulse, isFir) {
@@ -806,7 +863,7 @@ function drawFilterImpulse(impulse, isFir) {
   });
 }
 
-function drawPoleZero(isFir, taps, radius) {
+function drawPoleZero(isFir, taps, radius, poles = []) {
   fitCanvas(poleZeroCanvas);
   const ctx = poleZeroCanvas.getContext("2d");
   const { width, height } = poleZeroCanvas;
@@ -835,12 +892,18 @@ function drawPoleZero(isFir, taps, radius) {
       drawZero(ctx, cx + Math.cos(angle) * scale, cy - Math.sin(angle) * scale);
     }
   } else {
-    drawPole(ctx, cx + radius * scale, cy);
+    poles.forEach((pole) => {
+      drawPole(ctx, cx + pole.re * scale, cy - pole.im * scale);
+    });
   }
 
   ctx.fillStyle = "#172121";
   ctx.font = "800 22px system-ui";
-  ctx.fillText(isFir ? "zeros on unit circle" : `pole radius r = ${radius.toFixed(2)}`, width * 0.08, height * 0.12);
+  ctx.fillText(
+    isFir ? "zeros on unit circle" : `${poles.length} poles, radius r = ${radius.toFixed(2)}`,
+    width * 0.08,
+    height * 0.12
+  );
 }
 
 function drawZero(ctx, x, y) {
