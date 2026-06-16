@@ -443,6 +443,39 @@ canvas {
   font-size: 0.9rem;
 }
 
+.guide-card {
+  margin-top: 16px;
+  border-left: 5px solid var(--accent);
+}
+
+.lesson-controls .guide-card {
+  margin-top: 0;
+}
+
+.guide-card div {
+  display: grid;
+  gap: 6px;
+}
+
+.guide-card strong {
+  color: var(--accent-strong);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+}
+
+.guide-card ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.guide-card li {
+  padding-left: 2px;
+}
+
 .segmented {
   display: grid;
   grid-template-columns: repeat(4, 1fr);

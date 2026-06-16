@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Audio Signal Lab</title>
-    <link rel="stylesheet" href="styles.css?v=20260615-sinc-alias">
+    <link rel="stylesheet" href="styles.css?v=20260616-guides">
     <script>
       window.MathJax = {
         tex: {
@@ -128,6 +128,28 @@
               </label>
             </article>
           </section>
+
+          <article class="control-block guide-card">
+            <h2>Guide</h2>
+            <div>
+              <strong>目的</strong>
+              <p>実音声の波形とスペクトルを見ながら、フィルタが時間領域と周波数領域に与える影響を結びつけます。</p>
+            </div>
+            <div>
+              <strong>操作</strong>
+              <ul>
+                <li>音声ファイルを読み込み、Low / High / Band / Notchを切り替える。</li>
+                <li>Cutoff、Q、Gainを動かし、Processedの波形とスペクトルをOriginalと比較する。</li>
+              </ul>
+            </div>
+            <div>
+              <strong>考察</strong>
+              <ul>
+                <li>Qを大きくすると、通過帯域や阻止帯域はどのように鋭くなるか。</li>
+                <li>スペクトルで消えた成分は、波形や聴こえ方ではどのように変化するか。</li>
+              </ul>
+            </div>
+          </article>
         </section>
 
         <section class="module-view" data-module="sampling">
@@ -157,6 +179,28 @@
             </div>
 
             <aside class="lesson-controls">
+              <article class="control-block guide-card">
+                <h2>Guide</h2>
+                <div>
+                  <strong>目的</strong>
+                  <p>サンプリング周波数、ナイキスト周波数、sinc補間による波形復元の関係を確認します。</p>
+                </div>
+                <div>
+                  <strong>操作</strong>
+                  <ul>
+                    <li>Signal frequencyとSample rateを動かし、Nyquist OK / Aliasingを切り替える。</li>
+                    <li>Show sinc componentsで、各サンプル点から復元波形が作られる様子を見る。</li>
+                  </ul>
+                </div>
+                <div>
+                  <strong>考察</strong>
+                  <ul>
+                    <li>\(f_s &gt; 2f\) を満たす時と満たさない時で、復元波形はどう変わるか。</li>
+                    <li>スペクトログラムでは、折り返した周波数がどこに現れるか。</li>
+                  </ul>
+                </div>
+              </article>
+
               <article class="control-block sliders">
                 <div>
                   <h2>Signal</h2>
@@ -225,6 +269,28 @@
             </div>
 
             <aside class="lesson-controls">
+              <article class="control-block guide-card">
+                <h2>Guide</h2>
+                <div>
+                  <strong>目的</strong>
+                  <p>LTIシステムを、入力、インパルス応答、畳み込み出力、周波数応答の4つの見方でつなげます。</p>
+                </div>
+                <div>
+                  <strong>操作</strong>
+                  <ul>
+                    <li>Inputを切り替え、同じシステムでも出力がどう変わるかを見る。</li>
+                    <li>Systemを切り替え、\(h[n]\) の形と \(|H(e^{j\omega})|\) の形を比較する。</li>
+                  </ul>
+                </div>
+                <div>
+                  <strong>考察</strong>
+                  <ul>
+                    <li>Impulse入力の出力が、そのままインパルス応答になる理由は何か。</li>
+                    <li>Edgeのような差分系で、低周波と高周波のどちらが強調されるか。</li>
+                  </ul>
+                </div>
+              </article>
+
               <article class="control-block">
                 <div>
                   <h2>Input</h2>
@@ -304,6 +370,28 @@
             </div>
 
             <aside class="lesson-controls">
+              <article class="control-block guide-card">
+                <h2>Guide</h2>
+                <div>
+                  <strong>目的</strong>
+                  <p>FIRとIIRの違いを、係数、極零配置、インパルス応答、安定性から比較します。</p>
+                </div>
+                <div>
+                  <strong>操作</strong>
+                  <ul>
+                    <li>FIR / IIR、Low-pass / High-passを切り替え、周波数応答の変化を見る。</li>
+                    <li>IIRではorderとpole radiusを動かし、極の数と位置が応答に与える影響を見る。</li>
+                  </ul>
+                </div>
+                <div>
+                  <strong>考察</strong>
+                  <ul>
+                    <li>FIRのタップ数を増やすと、遷移帯域とインパルス応答の長さはどう変わるか。</li>
+                    <li>IIRの極が単位円に近づくと、応答の尾と安定性はどう変わるか。</li>
+                  </ul>
+                </div>
+              </article>
+
               <article class="control-block">
                 <div>
                   <h2>Filter Type</h2>
@@ -400,6 +488,28 @@
             </div>
 
             <aside class="lesson-controls">
+              <article class="control-block guide-card">
+                <h2>Guide</h2>
+                <div>
+                  <strong>目的</strong>
+                  <p>窓関数のメインローブ、サイドローブ、スペクトル漏れの関係を、2つの正弦波で確認します。</p>
+                </div>
+                <div>
+                  <strong>操作</strong>
+                  <ul>
+                    <li>Windowを切り替え、メインローブ幅とサイドローブ高さを比較する。</li>
+                    <li>Weak tone gapとWeak tone levelを動かし、弱い成分が見える条件を探す。</li>
+                  </ul>
+                </div>
+                <div>
+                  <strong>考察</strong>
+                  <ul>
+                    <li>近い2成分を分けたい時、メインローブ幅はどのように効くか。</li>
+                    <li>強い成分の漏れが弱い成分を隠す時、サイドローブ高さはどう関係するか。</li>
+                  </ul>
+                </div>
+              </article>
+
               <article class="control-block">
                 <div>
                   <h2>Window</h2>
@@ -452,6 +562,6 @@
         </section>
       </section>
     </main>
-    <script src="script.js?v=20260615-windowing"></script>
+    <script src="script.js?v=20260616-guides"></script>
   </body>
 </html>
