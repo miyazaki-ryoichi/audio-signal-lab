@@ -38,6 +38,7 @@ const ltiProbeValue = document.querySelector("#ltiProbeValue");
 const ltiSystemName = document.querySelector("#ltiSystemName");
 const firTaps = document.querySelector("#firTaps");
 const firTapValue = document.querySelector("#firTapValue");
+const tapControlText = document.querySelector("#tapControlText");
 const poleRadius = document.querySelector("#poleRadius");
 const poleRadiusValue = document.querySelector("#poleRadiusValue");
 const stabilityStatus = document.querySelector("#stabilityStatus");
@@ -768,9 +769,11 @@ function drawFilterLab() {
   const taps = Number(firTaps.value);
   const radius = Number(poleRadius.value);
   const isFir = state.filterFamily === "fir";
-  const impulse = isFir ? makeFirImpulse(taps) : makeIirImpulse(radius, 56);
+  const iirSamples = Math.max(12, taps * 4);
+  const impulse = isFir ? makeFirImpulse(taps) : makeIirImpulse(radius, iirSamples);
 
-  firTapValue.value = taps;
+  tapControlText.textContent = isFir ? "FIR taps" : "IIR visible samples";
+  firTapValue.value = isFir ? taps : iirSamples;
   poleRadiusValue.value = radius.toFixed(2);
   stabilityStatus.textContent = isFir || radius < 1 ? "Stable" : "Unstable";
   stabilityStatus.style.color = isFir || radius < 1 ? "#0f766e" : "#d95d39";
