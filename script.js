@@ -39,6 +39,8 @@ const ltiSystemName = document.querySelector("#ltiSystemName");
 const firTaps = document.querySelector("#firTaps");
 const firTapValue = document.querySelector("#firTapValue");
 const tapControlText = document.querySelector("#tapControlText");
+const filterCutoff = document.querySelector("#filterCutoff");
+const filterCutoffValue = document.querySelector("#filterCutoffValue");
 const poleRadius = document.querySelector("#poleRadius");
 const poleRadiusValue = document.querySelector("#poleRadiusValue");
 const stabilityStatus = document.querySelector("#stabilityStatus");
@@ -67,6 +69,7 @@ const moduleViews = [...document.querySelectorAll("[data-module]")];
 const ltiInputButtons = [...document.querySelectorAll("[data-lti-input]")];
 const ltiSystemButtons = [...document.querySelectorAll("[data-lti-system]")];
 const filterFamilyButtons = [...document.querySelectorAll("[data-filter-family]")];
+const filterModeButtons = [...document.querySelectorAll("[data-filter-mode]")];
 const windowTypeButtons = [...document.querySelectorAll("[data-window-type]")];
 const canvases = [
   waveCanvas,
@@ -92,6 +95,7 @@ const state = {
   ltiInput: "impulse",
   ltiSystem: "average",
   filterFamily: "fir",
+  filterMode: "lowpass",
   windowType: "rect",
   objectUrl: null,
 };
@@ -766,38 +770,65 @@ function drawResponseCurve(ctx, data, rect, color, maxValue, label, index) {
 }
 
 function drawFilterLab() {
-  const taps = Number(firTaps.value);
+  const requestedTaps = Number(firTaps.value);
   const radius = Number(poleRadius.value);
+  const cutoffRatio = Number(filterCutoff.value);
   const isFir = state.filterFamily === "fir";
-  const iirOrder = Math.max(1, Math.min(4, taps));
-  const poles = getIirPoles(iirOrder, radius);
+  const firTapCount = Math.max(3, requestedTaps % 2 === 0 ? requestedTaps + 1 : requestedTaps);
+  const iirOrder = Math.max(1, Math.min(4, requestedTaps));
+  const poles = getIirPoles(iirOrder, radius, cutoffRatio, state.filterMode);
+  const zeros = getIirZeros(iirOrder, state.filterMode);
   const iirDenominator = getDenominatorFromPoles(poles);
-  const impulse = isFir ? makeFirImpulse(Math.max(2, taps)) : makeIirImpulse(iirDenominator, 64);
+  const iirNumerator = getNumeratorFromZeros(zeros, state.filterMode);
+  const impulse = isFir
+    ? makeFirImpulse(firTapCount, cutoffRatio, state.filterMode)
+    : makeIirImpulse(iirNumerator, iirDenominator, 64);
 
-  firTaps.min = isFir ? "2" : "1";
-  firTaps.max = isFir ? "16" : "4";
-  if (isFir && taps < 2) firTaps.value = "2";
-  if (!isFir && taps > 4) firTaps.value = "4";
+  firTaps.min = isFir ? "3" : "1";
+  firTaps.max = isFir ? "31" : "4";
+  if (isFir && requestedTaps < 3) firTaps.value = "3";
+  if (!isFir && requestedTaps > 4) firTaps.value = "4";
   tapControlText.textContent = isFir ? "FIR taps" : "IIR order";
-  firTapValue.value = isFir ? Math.max(2, taps) : iirOrder;
+  firTapValue.value = isFir ? firTapCount : iirOrder;
+  filterCutoffValue.value = `${cutoffRatio.toFixed(2)}π`;
   poleRadiusValue.value = radius.toFixed(2);
   stabilityStatus.textContent = isFir || radius < 1 ? "Stable" : "Unstable";
   stabilityStatus.style.color = isFir || radius < 1 ? "#0f766e" : "#d95d39";
 
   drawFilterImpulse(impulse, isFir);
-  drawPoleZero(isFir, Math.max(2, taps), radius, poles);
+  drawPoleZero(isFir, firTapCount, radius, poles, zeros);
   drawFilterFrequency(impulse);
 }
 
-function makeFirImpulse(taps) {
-  return Array.from({ length: taps }, () => 1 / taps);
+function makeFirImpulse(taps, cutoffRatio, mode) {
+  const center = (taps - 1) / 2;
+  const normalizedCutoff = cutoffRatio / 2;
+  const lowpass = Array.from({ length: taps }, (_, n) => {
+    const x = n - center;
+    const ideal = Math.abs(x) < 1e-9
+      ? 2 * normalizedCutoff
+      : Math.sin(2 * Math.PI * normalizedCutoff * x) / (Math.PI * x);
+    const window = 0.54 - 0.46 * Math.cos((2 * Math.PI * n) / (taps - 1));
+    return ideal * window;
+  });
+  const lowpassGain = lowpass.reduce((sum, value) => sum + value, 0) || 1;
+  const normalizedLowpass = lowpass.map((value) => value / lowpassGain);
+  if (mode === "lowpass") return normalizedLowpass;
+  return normalizedLowpass.map((value, n) => (n === center ? 1 : 0) - value);
 }
 
-function getIirPoles(order, radius) {
-  if (order === 1) return [{ re: radius, im: 0 }];
-  if (order === 2) return getPolePair(radius, 0.28 * Math.PI);
-  if (order === 3) return [{ re: radius, im: 0 }, ...getPolePair(radius, 0.35 * Math.PI)];
-  return [...getPolePair(radius, 0.24 * Math.PI), ...getPolePair(radius, 0.46 * Math.PI)];
+function getIirPoles(order, radius, cutoffRatio, mode) {
+  const baseAngle = Math.max(0.08, Math.min(0.48, cutoffRatio)) * Math.PI;
+  const orient = (angle) => (mode === "highpass" ? Math.PI - angle : angle);
+  if (order === 1) return [{ re: mode === "highpass" ? -radius : radius, im: 0 }];
+  if (order === 2) return getPolePair(radius, orient(baseAngle));
+  if (order === 3) {
+    const realPole = { re: mode === "highpass" ? -radius : radius, im: 0 };
+    return [realPole, ...getPolePair(radius, orient(baseAngle))];
+  }
+  const lowerAngle = Math.max(0.06 * Math.PI, baseAngle * 0.72);
+  const upperAngle = Math.min(0.49 * Math.PI, baseAngle * 1.28);
+  return [...getPolePair(radius, orient(lowerAngle)), ...getPolePair(radius, orient(upperAngle))];
 }
 
 function getPolePair(radius, angle) {
@@ -826,6 +857,24 @@ function getDenominatorFromPoles(poles) {
   return coeffs;
 }
 
+function getIirZeros(order, mode) {
+  const zero = mode === "highpass" ? 1 : -1;
+  return Array.from({ length: order }, () => ({ re: zero, im: 0 }));
+}
+
+function getNumeratorFromZeros(zeros, mode) {
+  let coeffs = [1];
+  zeros.forEach((zero) => {
+    coeffs = convolveReal(coeffs, [1, -zero.re]);
+  });
+  const gain = coeffs.reduce((sum, value, index) => {
+    const basis = mode === "highpass" && index % 2 === 1 ? -1 : 1;
+    return sum + value * basis;
+  }, 0);
+  const safeGain = Math.abs(gain) > 1e-9 ? Math.abs(gain) : 1;
+  return coeffs.map((value) => value / safeGain);
+}
+
 function convolveReal(a, b) {
   const y = new Array(a.length + b.length - 1).fill(0);
   for (let i = 0; i < a.length; i += 1) {
@@ -836,10 +885,13 @@ function convolveReal(a, b) {
   return y;
 }
 
-function makeIirImpulse(denominator, length) {
+function makeIirImpulse(numerator, denominator, length) {
   const impulse = new Array(length).fill(0);
   for (let n = 0; n < length; n += 1) {
-    let value = n === 0 ? 1 : 0;
+    let value = 0;
+    for (let k = 0; k < numerator.length; k += 1) {
+      value += n === k ? numerator[k] : 0;
+    }
     for (let k = 1; k < denominator.length; k += 1) {
       if (n - k >= 0) value -= denominator[k] * impulse[n - k];
     }
@@ -863,7 +915,7 @@ function drawFilterImpulse(impulse, isFir) {
   });
 }
 
-function drawPoleZero(isFir, taps, radius, poles = []) {
+function drawPoleZero(isFir, taps, radius, poles = [], zeros = []) {
   fitCanvas(poleZeroCanvas);
   const ctx = poleZeroCanvas.getContext("2d");
   const { width, height } = poleZeroCanvas;
@@ -892,6 +944,9 @@ function drawPoleZero(isFir, taps, radius, poles = []) {
       drawZero(ctx, cx + Math.cos(angle) * scale, cy - Math.sin(angle) * scale);
     }
   } else {
+    zeros.forEach((zero) => {
+      drawZero(ctx, cx + zero.re * scale, cy - zero.im * scale);
+    });
     poles.forEach((pole) => {
       drawPole(ctx, cx + pole.re * scale, cy - pole.im * scale);
     });
@@ -900,7 +955,7 @@ function drawPoleZero(isFir, taps, radius, poles = []) {
   ctx.fillStyle = "#172121";
   ctx.font = "800 22px system-ui";
   ctx.fillText(
-    isFir ? "zeros on unit circle" : `${poles.length} poles, radius r = ${radius.toFixed(2)}`,
+    isFir ? "FIR zeros from finite impulse" : `${poles.length} poles / ${zeros.length} zeros`,
     width * 0.08,
     height * 0.12
   );
@@ -1494,8 +1549,17 @@ filterFamilyButtons.forEach((button) => {
   });
 });
 
+filterModeButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    filterModeButtons.forEach((item) => item.classList.toggle("active", item === button));
+    state.filterMode = button.dataset.filterMode;
+    drawFilterLab();
+  });
+});
+
 ltiProbe.addEventListener("input", drawLtiLab);
 firTaps.addEventListener("input", drawFilterLab);
+filterCutoff.addEventListener("input", drawFilterLab);
 poleRadius.addEventListener("input", drawFilterLab);
 
 windowTypeButtons.forEach((button) => {
