@@ -41,6 +41,7 @@ const firTapValue = document.querySelector("#firTapValue");
 const tapControlText = document.querySelector("#tapControlText");
 const filterCutoff = document.querySelector("#filterCutoff");
 const filterCutoffValue = document.querySelector("#filterCutoffValue");
+const poleRadiusControl = document.querySelector("#poleRadiusControl");
 const poleRadius = document.querySelector("#poleRadius");
 const poleRadiusValue = document.querySelector("#poleRadiusValue");
 const stabilityStatus = document.querySelector("#stabilityStatus");
@@ -791,6 +792,7 @@ function drawFilterLab() {
   tapControlText.textContent = isFir ? "FIR taps" : "IIR order";
   firTapValue.value = isFir ? firTapCount : iirOrder;
   filterCutoffValue.value = `${cutoffRatio.toFixed(2)}π`;
+  poleRadiusControl.hidden = isFir;
   poleRadiusValue.value = radius.toFixed(2);
   stabilityStatus.textContent = isFir || radius < 1 ? "Stable" : "Unstable";
   stabilityStatus.style.color = isFir || radius < 1 ? "#0f766e" : "#d95d39";
