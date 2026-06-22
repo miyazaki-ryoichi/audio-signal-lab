@@ -62,6 +62,7 @@
           <button class="active" type="button" data-module-target="analyzer" aria-pressed="true">Audio Analyzer</button>
           <button type="button" data-module-target="sampling" aria-pressed="false">Sampling Theorem</button>
           <button type="button" data-module-target="lti" aria-pressed="false">LTI Systems</button>
+          <button type="button" data-module-target="ztransform" aria-pressed="false">Z Transform</button>
           <button type="button" data-module-target="filters" aria-pressed="false">FIR/IIR & Stability</button>
           <button type="button" data-module-target="windowing" aria-pressed="false">Window Functions</button>
         </nav>
@@ -331,6 +332,117 @@
                 <div class="equation-block">\[
                   Y(e^{j\omega}) = X(e^{j\omega})H(e^{j\omega})
                 \]</div>
+              </article>
+            </aside>
+          </section>
+        </section>
+
+        <section class="module-view" data-module="ztransform">
+          <section class="lab-layout" aria-label="Z transform interactive lab">
+            <div class="lesson-stack">
+              <article class="panel">
+                <div class="panel-head">
+                  <div>
+                    <h2>Z Transform</h2>
+                    <p>離散時間列、z変換、ROC、極・零点を同時に見て、式から何が読めるかを確認します。</p>
+                  </div>
+                  <span id="zSignalSummary">極 z = 0.60</span>
+                </div>
+                <canvas id="zSequenceCanvas" width="1400" height="420" aria-label="離散時間列の表示"></canvas>
+              </article>
+
+              <section class="filter-grid">
+                <article class="panel">
+                  <div class="panel-head">
+                    <h2>z Plane</h2>
+                    <span>unit circle / ROC</span>
+                  </div>
+                  <canvas id="zPlaneCanvas" width="700" height="520" aria-label="z平面の極零点表示"></canvas>
+                </article>
+
+                <article class="panel">
+                  <div class="panel-head">
+                    <h2>Formula and Reading</h2>
+                    <span>式から読む</span>
+                  </div>
+                  <div class="z-readout">
+                    <div>
+                      <span class="metric-label">z transform</span>
+                      <div id="zFormula" class="equation-block"></div>
+                    </div>
+                    <div>
+                      <span class="metric-label">ROC</span>
+                      <div id="zRoc" class="equation-block"></div>
+                    </div>
+                    <div>
+                      <span class="metric-label">What it tells us</span>
+                      <ul id="zInsightList"></ul>
+                    </div>
+                  </div>
+                </article>
+              </section>
+            </div>
+
+            <aside class="lesson-controls">
+              <article class="control-block guide-card">
+                <h2>Guide</h2>
+                <div>
+                  <strong>目的</strong>
+                  <p>z変換を「答えの式」だけで終わらせず、ROC、極の位置、右側列、減衰・発散、安定性へつなげます。</p>
+                </div>
+                <div>
+                  <strong>操作</strong>
+                  <ul>
+                    <li>Signalを切り替え、代表的な列とz変換の対応を確認する。</li>
+                    <li>\(a\) や \(\omega T\) を動かし、極の位置と時間列の変化を見る。</li>
+                  </ul>
+                </div>
+                <div>
+                  <strong>考察</strong>
+                  <ul>
+                    <li>ROCが \(|z|>|a|\) のとき、なぜ右側列として読めるか。</li>
+                    <li>極が単位円の内側・上・外側にあると、応答の形はどう変わるか。</li>
+                  </ul>
+                </div>
+              </article>
+
+              <article class="control-block sliders">
+                <label>
+                  <span>Signal</span>
+                  <select id="zSignalSelect">
+                    <option value="impulse">Impulse δ[n]</option>
+                    <option value="step">Step u[n]</option>
+                    <option value="geometric" selected>Geometric a^n u[n]</option>
+                    <option value="ramp">Ramp n u[n]</option>
+                    <option value="cosine">Cosine cos(nωT)u[n]</option>
+                  </select>
+                </label>
+                <label>
+                  <span>a</span>
+                  <output id="zAValue">0.60</output>
+                  <input id="zA" type="range" min="-1.8" max="1.8" value="0.6" step="0.05">
+                </label>
+                <label>
+                  <span>ωT</span>
+                  <output id="zOmegaValue">0.75</output>
+                  <input id="zOmega" type="range" min="0.1" max="3.1416" value="0.75" step="0.01">
+                </label>
+                <label>
+                  <span>Samples</span>
+                  <output id="zSampleValue">22</output>
+                  <input id="zSamples" type="range" min="8" max="40" value="22" step="1">
+                </label>
+              </article>
+
+              <article class="control-block concept-card">
+                <h2>Bridge to Systems</h2>
+                <div class="equation-block">\[
+                  y[n] - r y[n-1] = x[n]
+                \]</div>
+                <div class="equation-block">\[
+                  H(z)=\frac{1}{1-rz^{-1}}
+                \]</div>
+                <p>\(a^n u[n]\) は、1次IIRのインパルス応答としても現れます。</p>
               </article>
             </aside>
           </section>

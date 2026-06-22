@@ -26,6 +26,19 @@ const ltiFreqCanvas = document.querySelector("#ltiFreqCanvas");
 const filterTimeCanvas = document.querySelector("#filterTimeCanvas");
 const poleZeroCanvas = document.querySelector("#poleZeroCanvas");
 const filterFreqCanvas = document.querySelector("#filterFreqCanvas");
+const zSequenceCanvas = document.querySelector("#zSequenceCanvas");
+const zPlaneCanvas = document.querySelector("#zPlaneCanvas");
+const zSignalSelect = document.querySelector("#zSignalSelect");
+const zA = document.querySelector("#zA");
+const zOmega = document.querySelector("#zOmega");
+const zSamples = document.querySelector("#zSamples");
+const zAValue = document.querySelector("#zAValue");
+const zOmegaValue = document.querySelector("#zOmegaValue");
+const zSampleValue = document.querySelector("#zSampleValue");
+const zSignalSummary = document.querySelector("#zSignalSummary");
+const zFormula = document.querySelector("#zFormula");
+const zRoc = document.querySelector("#zRoc");
+const zInsightList = document.querySelector("#zInsightList");
 const windowTimeCanvas = document.querySelector("#windowTimeCanvas");
 const windowResponseCanvas = document.querySelector("#windowResponseCanvas");
 const leakageCanvas = document.querySelector("#leakageCanvas");
@@ -82,6 +95,8 @@ const canvases = [
   filterTimeCanvas,
   poleZeroCanvas,
   filterFreqCanvas,
+  zSequenceCanvas,
+  zPlaneCanvas,
   windowTimeCanvas,
   windowResponseCanvas,
   leakageCanvas,
@@ -97,6 +112,10 @@ const state = {
   ltiSystem: "average",
   filterFamily: "fir",
   filterMode: "lowpass",
+  zSignal: "geometric",
+  zA: 0.6,
+  zOmega: 0.75,
+  zSamples: 22,
   windowType: "rect",
   objectUrl: null,
 };
@@ -109,6 +128,85 @@ const windowDefaults = {
   size: 64,
 };
 
+const zSignals = {
+  impulse: {
+    label: "Impulse δ[n]",
+    formula: () => String.raw`X(z)=1`,
+    roc: () => String.raw`\mathrm{ROC}: \text{all } z`,
+    summary: "finite sequence",
+    sequence: (n) => (n === 0 ? 1 : 0),
+    poles: () => [],
+    zeros: () => [],
+    insights: () => [
+      "極がないので有限長列として扱えます。",
+      "インパルス応答が δ[n] のシステムは恒等システムです。",
+      "他のシステムの応答を見るための基準入力になります。",
+    ],
+  },
+  step: {
+    label: "Step u[n]",
+    formula: () => String.raw`X(z)=\frac{z}{z-1}=\frac{1}{1-z^{-1}}`,
+    roc: () => String.raw`\mathrm{ROC}: |z|>1`,
+    summary: "pole at z = 1",
+    sequence: (n) => (n >= 0 ? 1 : 0),
+    poles: () => [{ re: 1, im: 0 }],
+    zeros: () => [{ re: 0, im: 0 }],
+    insights: () => [
+      "ROCが外側なので右側列、つまり因果的な列として読めます。",
+      "極が単位円上にあるため、絶対総和可能ではありません。",
+      "最終値定理などを使うときは、極の位置条件を確認する必要があります。",
+    ],
+  },
+  geometric: {
+    label: "Geometric a^n u[n]",
+    formula: () => String.raw`X(z)=\frac{z}{z-${formatNumber(state.zA)}}=\frac{1}{1-${formatNumber(state.zA)}z^{-1}}`,
+    roc: () => String.raw`\mathrm{ROC}: |z|>${formatNumber(Math.abs(state.zA))}`,
+    summary: () => `pole at z = ${formatNumber(state.zA)}`,
+    sequence: (n) => (n >= 0 ? state.zA ** n : 0),
+    poles: () => [{ re: state.zA, im: 0 }],
+    zeros: () => [{ re: 0, im: 0 }],
+    insights: () => [
+      `極は z = ${formatNumber(state.zA)} にあります。`,
+      Math.abs(state.zA) < 1 ? "|a| < 1 なので時間列は減衰します。" : "|a| ≥ 1 なので時間列は減衰しません。",
+      Math.abs(state.zA) < 1 ? "因果IIRの安定な基本例として読めます。" : "因果IIRとしては不安定側の例です。",
+    ],
+  },
+  ramp: {
+    label: "Ramp n u[n]",
+    formula: () => String.raw`X(z)=\frac{z}{(z-1)^2}`,
+    roc: () => String.raw`\mathrm{ROC}: |z|>1`,
+    summary: "double pole at z = 1",
+    sequence: (n) => (n >= 0 ? n : 0),
+    poles: () => [
+      { re: 1, im: 0 },
+      { re: 1, im: 0, offset: 1 },
+    ],
+    zeros: () => [{ re: 0, im: 0 }],
+    insights: () => [
+      "z = 1 に2重極があるため、単位ステップより強く発散します。",
+      "極の重複度は、時間領域での多項式的な増加と対応します。",
+      "ROCは外側ですが、単位円上に極があるため安定な応答ではありません。",
+    ],
+  },
+  cosine: {
+    label: "Cosine cos(nωT)u[n]",
+    formula: () => String.raw`X(z)=\frac{z(z-\cos ${formatNumber(state.zOmega)})}{z^2-2z\cos ${formatNumber(state.zOmega)}+1}`,
+    roc: () => String.raw`\mathrm{ROC}: |z|>1`,
+    summary: () => `poles at e^±j${formatNumber(state.zOmega)}`,
+    sequence: (n) => (n >= 0 ? Math.cos(n * state.zOmega) : 0),
+    poles: () => [
+      { re: Math.cos(state.zOmega), im: Math.sin(state.zOmega) },
+      { re: Math.cos(state.zOmega), im: -Math.sin(state.zOmega) },
+    ],
+    zeros: () => [{ re: Math.cos(state.zOmega), im: 0 }],
+    insights: () => [
+      "極の角度が振動の速さに対応します。",
+      "極が単位円上にあるので、振幅は減衰せず振動が続きます。",
+      "フィルタやDFTの章では、この角度が周波数の読み取りにつながります。",
+    ],
+  },
+};
+
 const ensureContext = () => {
   if (!state.context) {
     state.context = new AudioContext();
@@ -118,6 +216,10 @@ const ensureContext = () => {
 
 const formatSeconds = (seconds) => `${seconds.toFixed(2)} s`;
 const formatHz = (hz) => `${Math.round(hz).toLocaleString()} Hz`;
+const formatNumber = (value) => {
+  const rounded = Math.round(value * 100) / 100;
+  return Object.is(rounded, -0) ? "0" : rounded.toFixed(2).replace(/\.?0+$/, "");
+};
 
 function setEnabled(enabled) {
   [playOriginal, playProcessed, stopAudio].forEach((button) => {
@@ -1346,6 +1448,150 @@ function fitCanvas(canvas) {
   }
 }
 
+function zMath(tex) {
+  return `\\[${tex}\\]`;
+}
+
+function drawZSequence() {
+  fitCanvas(zSequenceCanvas);
+  const ctx = zSequenceCanvas.getContext("2d");
+  const { width, height } = zSequenceCanvas;
+  drawGrid(ctx, width, height);
+
+  const signal = zSignals[state.zSignal];
+  const count = state.zSamples;
+  const samples = Array.from({ length: count }, (_, n) => ({ n, value: signal.sequence(n) }));
+  const rect = { left: 58, right: width - 28, top: 44, bottom: height - 58 };
+  const maxAbs = Math.max(1, ...samples.map((sample) => Math.abs(sample.value)));
+  const yZero = (rect.top + rect.bottom) / 2;
+  const xAt = (n) => rect.left + (n / Math.max(1, count - 1)) * (rect.right - rect.left);
+  const yAt = (value) => yZero - (value / maxAbs) * ((rect.bottom - rect.top) * 0.45);
+
+  ctx.strokeStyle = "#92a39b";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(rect.left, yZero);
+  ctx.lineTo(rect.right, yZero);
+  ctx.stroke();
+
+  ctx.fillStyle = "#5f6b66";
+  ctx.font = "800 18px system-ui";
+  ctx.fillText("x[n]", rect.left, rect.top - 14);
+  ctx.fillText("n", rect.right - 4, yZero + 28);
+
+  ctx.strokeStyle = "#0f766e";
+  ctx.fillStyle = "#0f766e";
+  ctx.lineWidth = 3;
+  samples.forEach(({ n, value }) => {
+    const x = xAt(n);
+    const y = yAt(value);
+    ctx.beginPath();
+    ctx.moveTo(x, yZero);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(x, y, 5, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  ctx.fillStyle = "#5f6b66";
+  ctx.font = "700 15px system-ui";
+  [0, Math.floor((count - 1) / 2), count - 1].forEach((n) => {
+    ctx.fillText(String(n), xAt(n) - 5, yZero + 22);
+  });
+}
+
+function drawZPlaneLab() {
+  fitCanvas(zPlaneCanvas);
+  const ctx = zPlaneCanvas.getContext("2d");
+  const { width, height } = zPlaneCanvas;
+  drawGrid(ctx, width, height);
+
+  const signal = zSignals[state.zSignal];
+  const poles = signal.poles();
+  const zeros = signal.zeros();
+  const centerX = width / 2;
+  const centerY = height / 2;
+  const scale = Math.min(width, height) / 3.5;
+  const toX = (re) => centerX + re * scale;
+  const toY = (im) => centerY - im * scale;
+
+  ctx.strokeStyle = "#92a39b";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(34, centerY);
+  ctx.lineTo(width - 34, centerY);
+  ctx.moveTo(centerX, 34);
+  ctx.lineTo(centerX, height - 34);
+  ctx.stroke();
+
+  ctx.strokeStyle = "#0b4f6c";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, scale, 0, Math.PI * 2);
+  ctx.stroke();
+
+  const rocRadius = state.zSignal === "geometric" ? Math.abs(state.zA) * scale : state.zSignal === "impulse" ? 0 : scale;
+  if (rocRadius > 0) {
+    ctx.strokeStyle = "rgba(217, 93, 57, 0.45)";
+    ctx.setLineDash([8, 8]);
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, rocRadius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  zeros.forEach((zero) => {
+    ctx.strokeStyle = "#0b4f6c";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(toX(zero.re), toY(zero.im), 10, 0, Math.PI * 2);
+    ctx.stroke();
+  });
+
+  poles.forEach((pole) => {
+    const jitter = pole.offset ? pole.offset * 9 : 0;
+    const x = toX(pole.re) + jitter;
+    const y = toY(pole.im) - jitter;
+    ctx.strokeStyle = "#d95d39";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(x - 10, y - 10);
+    ctx.lineTo(x + 10, y + 10);
+    ctx.moveTo(x + 10, y - 10);
+    ctx.lineTo(x - 10, y + 10);
+    ctx.stroke();
+  });
+
+  ctx.fillStyle = "#5f6b66";
+  ctx.font = "800 16px system-ui";
+  ctx.fillText("Re", width - 58, centerY - 12);
+  ctx.fillText("Im", centerX + 12, 56);
+  ctx.fillText("unit circle", centerX + scale - 72, centerY - 12);
+}
+
+function drawZTransformLab() {
+  if (!zSequenceCanvas || !zPlaneCanvas) return;
+
+  state.zSignal = zSignalSelect.value;
+  state.zA = Number(zA.value);
+  state.zOmega = Number(zOmega.value);
+  state.zSamples = Number(zSamples.value);
+
+  const signal = zSignals[state.zSignal];
+  zAValue.value = formatNumber(state.zA);
+  zOmegaValue.value = formatNumber(state.zOmega);
+  zSampleValue.value = String(state.zSamples);
+  zSignalSummary.textContent = typeof signal.summary === "function" ? signal.summary() : signal.summary;
+  zFormula.innerHTML = zMath(signal.formula());
+  zRoc.innerHTML = zMath(signal.roc());
+  zInsightList.innerHTML = signal.insights().map((insight) => `<li>${insight}</li>`).join("");
+
+  drawZSequence();
+  drawZPlaneLab();
+  window.MathJax?.typesetPromise?.([zFormula, zRoc]);
+}
+
 function activateModule(moduleName) {
   moduleButtons.forEach((button) => {
     const isActive = button.dataset.moduleTarget === moduleName;
@@ -1362,6 +1608,7 @@ function activateModule(moduleName) {
     drawSpectrum();
     drawSamplingLesson();
     drawLtiLab();
+    drawZTransformLab();
     drawFilterLab();
     drawWindowLab();
   });
@@ -1559,6 +1806,10 @@ filterModeButtons.forEach((button) => {
   });
 });
 
+[zSignalSelect, zA, zOmega, zSamples].forEach((control) => {
+  control.addEventListener("input", drawZTransformLab);
+});
+
 ltiProbe.addEventListener("input", drawLtiLab);
 firTaps.addEventListener("input", drawFilterLab);
 filterCutoff.addEventListener("input", drawFilterLab);
@@ -1594,6 +1845,7 @@ drawWaveform();
 drawSpectrum();
 drawSamplingLesson();
 drawLtiLab();
+drawZTransformLab();
 drawFilterLab();
 drawWindowLab();
 
@@ -1603,6 +1855,7 @@ window.addEventListener("resize", () => {
   drawSpectrum();
   drawSamplingLesson();
   drawLtiLab();
+  drawZTransformLab();
   drawFilterLab();
   drawWindowLab();
 });

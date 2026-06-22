@@ -34,6 +34,7 @@ body {
 
 button,
 input,
+select,
 a {
   font: inherit;
 }
@@ -500,10 +501,40 @@ canvas {
   accent-color: var(--accent);
 }
 
+.sliders select {
+  grid-column: 1 / -1;
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 12px;
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 800;
+}
+
 output {
   color: var(--accent-strong);
   font-weight: 800;
   text-align: right;
+}
+
+.z-readout {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+}
+
+.z-readout .equation-block {
+  margin-top: 6px;
+}
+
+.z-readout ul {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0 0;
+  padding-left: 20px;
+  color: var(--muted);
+  line-height: 1.65;
 }
 
 .toggles label {
