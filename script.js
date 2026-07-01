@@ -1175,6 +1175,7 @@ function drawFilterFrequency(impulse) {
   };
 
   drawBodeAxes(ctx, magRect, "Magnitude [dB]", "0 dB", "-80 dB");
+  drawCutoffMarkers(ctx, magRect, -80, 8);
   drawBodeCurve(ctx, magnitudeDb, magRect, "#2b8a3e", -80, 8);
 
   const phaseMin = Math.min(-Math.PI, Math.floor(Math.min(...phase) / Math.PI) * Math.PI);
@@ -1187,6 +1188,49 @@ function drawFilterFrequency(impulse) {
   ctx.fillText("0", magRect.left, height - 18);
   ctx.fillText("π", magRect.left + magRect.width - 10, height - 18);
   ctx.fillText("normalized frequency", magRect.left + magRect.width * 0.34, height - 18);
+}
+
+function drawCutoffMarkers(ctx, rect, minDb, maxDb) {
+  const cutoffRatio = Number(filterCutoff.value);
+  const bandwidthRatio = Number(filterBandwidth.value);
+  const yAt = (db) => rect.top + rect.height - ((db - minDb) / (maxDb - minDb)) * rect.height;
+  const xAt = (ratio) => rect.left + Math.max(0, Math.min(1, ratio)) * rect.width;
+  const cutoffX = xAt(cutoffRatio);
+  const minus3Y = yAt(-3);
+
+  ctx.save();
+  ctx.strokeStyle = "rgba(217, 93, 57, 0.9)";
+  ctx.lineWidth = 2;
+  ctx.setLineDash([8, 6]);
+  ctx.beginPath();
+  ctx.moveTo(rect.left, minus3Y);
+  ctx.lineTo(rect.left + rect.width, minus3Y);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(cutoffX, rect.top);
+  ctx.lineTo(cutoffX, rect.top + rect.height);
+  ctx.stroke();
+
+  if (["bandpass", "notch"].includes(state.filterMode)) {
+    const lowEdge = Math.max(0, cutoffRatio - bandwidthRatio / 2);
+    const highEdge = Math.min(1, cutoffRatio + bandwidthRatio / 2);
+    ctx.strokeStyle = "rgba(11, 79, 108, 0.55)";
+    [lowEdge, highEdge].forEach((edge) => {
+      const x = xAt(edge);
+      ctx.beginPath();
+      ctx.moveTo(x, rect.top);
+      ctx.lineTo(x, rect.top + rect.height);
+      ctx.stroke();
+    });
+  }
+
+  ctx.setLineDash([]);
+  ctx.fillStyle = "#d95d39";
+  ctx.font = "800 15px system-ui";
+  ctx.fillText("-3 dB", rect.left + 8, minus3Y - 7);
+  ctx.fillText(state.filterMode === "bandpass" || state.filterMode === "notch" ? "center" : "cutoff", cutoffX + 7, rect.top + 22);
+  ctx.restore();
 }
 
 function getComplexResponse(signal, bins = 160) {
