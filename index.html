@@ -455,7 +455,7 @@
                 <div class="panel-head">
                   <div>
                     <h2>FIR/IIR & Stability</h2>
-                    <p>インパルス応答、周波数応答、極零配置を同時に動かして比較します。</p>
+                  <p>ローパス、ハイパス、バンドパス、帯域阻止を切り替え、タップ数・次数・近似方式による違いを比較します。</p>
                   </div>
                   <span id="stabilityStatus">Stable</span>
                 </div>
@@ -486,20 +486,20 @@
                 <h2>Guide</h2>
                 <div>
                   <strong>目的</strong>
-                  <p>FIRとIIRの違いを、係数、極零配置、インパルス応答、安定性から比較します。</p>
+                  <p>フィルタ種別、タップ数・次数、Butterworth/Chebyshev型の違いを、インパルス応答、周波数応答、極零配置から比較します。</p>
                 </div>
                 <div>
                   <strong>操作</strong>
                   <ul>
-                    <li>FIR / IIR、Low-pass / High-passを切り替え、周波数応答の変化を見る。</li>
-                    <li>IIRではorderとpole radiusを動かし、極の数と位置が応答に与える影響を見る。</li>
+                    <li>Low / High / Band / Notchを切り替え、通す帯域と止める帯域を確認する。</li>
+                    <li>FIRではタップ数、IIRでは次数と近似方式を動かし、遷移帯域やリップルの違いを見る。</li>
                   </ul>
                 </div>
                 <div>
                   <strong>考察</strong>
                   <ul>
                     <li>FIRのタップ数を増やすと、遷移帯域とインパルス応答の長さはどう変わるか。</li>
-                    <li>IIRの極が単位円に近づくと、応答の尾と安定性はどう変わるか。</li>
+                    <li>Butterworth型とChebyshev型では、なめらかさとリップルのどちらに違いが出るか。</li>
                   </ul>
                 </div>
               </article>
@@ -518,11 +518,24 @@
               <article class="control-block">
                 <div>
                   <h2>Response</h2>
-                  <p>Low-passとHigh-passで、係数・極零配置・周波数応答が変わります。</p>
+                  <p>通過させる帯域と止める帯域を切り替えます。</p>
                 </div>
                 <div class="segmented" role="group" aria-label="フィルタ応答">
-                  <button class="active" type="button" data-filter-mode="lowpass">Low-pass</button>
-                  <button type="button" data-filter-mode="highpass">High-pass</button>
+                  <button class="active" type="button" data-filter-mode="lowpass">Low</button>
+                  <button type="button" data-filter-mode="highpass">High</button>
+                  <button type="button" data-filter-mode="bandpass">Band</button>
+                  <button type="button" data-filter-mode="notch">Notch</button>
+                </div>
+              </article>
+
+              <article class="control-block">
+                <div>
+                  <h2>Approximation</h2>
+                  <p>IIRの代表的な近似方式を比較します。</p>
+                </div>
+                <div class="segmented two" role="group" aria-label="IIR近似方式">
+                  <button class="active" type="button" data-filter-approx="butterworth">Butterworth</button>
+                  <button type="button" data-filter-approx="chebyshev">Chebyshev</button>
                 </div>
               </article>
 
@@ -533,9 +546,14 @@
                   <input id="firTaps" type="range" min="1" max="16" value="5" step="1">
                 </label>
                 <label>
-                  <span>Cutoff</span>
+                  <span>Cutoff / Center</span>
                   <output id="filterCutoffValue">0.25π</output>
                   <input id="filterCutoff" type="range" min="0.08" max="0.45" value="0.25" step="0.01">
+                </label>
+                <label id="bandwidthControl">
+                  <span>Bandwidth</span>
+                  <output id="filterBandwidthValue">0.12π</output>
+                  <input id="filterBandwidth" type="range" min="0.04" max="0.30" value="0.12" step="0.01">
                 </label>
                 <label id="poleRadiusControl" hidden>
                   <span>IIR pole radius</span>
@@ -555,6 +573,7 @@
                 <div class="equation-block">\[
                   \text{stable} \Longleftrightarrow |p_i| < 1 \quad (i=1,\dots,N)
                 \]</div>
+                <p>Butterworthは単調でなめらかな通過域、Chebyshevはリップルを許して鋭い遷移を狙う、という違いを見ます。</p>
               </article>
             </aside>
           </section>

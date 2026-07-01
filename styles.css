@@ -483,6 +483,10 @@ canvas {
   gap: 8px;
 }
 
+.segmented.two {
+  grid-template-columns: repeat(2, 1fr);
+}
+
 .segmented button.active {
   background: var(--accent-strong);
   border-color: var(--accent-strong);

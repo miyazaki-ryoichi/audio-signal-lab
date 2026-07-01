@@ -54,6 +54,9 @@ const firTapValue = document.querySelector("#firTapValue");
 const tapControlText = document.querySelector("#tapControlText");
 const filterCutoff = document.querySelector("#filterCutoff");
 const filterCutoffValue = document.querySelector("#filterCutoffValue");
+const filterBandwidth = document.querySelector("#filterBandwidth");
+const filterBandwidthValue = document.querySelector("#filterBandwidthValue");
+const bandwidthControl = document.querySelector("#bandwidthControl");
 const poleRadiusControl = document.querySelector("#poleRadiusControl");
 const poleRadius = document.querySelector("#poleRadius");
 const poleRadiusValue = document.querySelector("#poleRadiusValue");
@@ -84,6 +87,7 @@ const ltiInputButtons = [...document.querySelectorAll("[data-lti-input]")];
 const ltiSystemButtons = [...document.querySelectorAll("[data-lti-system]")];
 const filterFamilyButtons = [...document.querySelectorAll("[data-filter-family]")];
 const filterModeButtons = [...document.querySelectorAll("[data-filter-mode]")];
+const filterApproxButtons = [...document.querySelectorAll("[data-filter-approx]")];
 const windowTypeButtons = [...document.querySelectorAll("[data-window-type]")];
 const canvases = [
   waveCanvas,
@@ -112,6 +116,7 @@ const state = {
   ltiSystem: "average",
   filterFamily: "fir",
   filterMode: "lowpass",
+  filterApprox: "butterworth",
   zSignal: "geometric",
   zA: 0.6,
   zOmega: 0.75,
@@ -876,27 +881,31 @@ function drawFilterLab() {
   const requestedTaps = Number(firTaps.value);
   const radius = Number(poleRadius.value);
   const cutoffRatio = Number(filterCutoff.value);
+  const bandwidthRatio = Number(filterBandwidth.value);
   const isFir = state.filterFamily === "fir";
   const firTapCount = Math.max(3, requestedTaps % 2 === 0 ? requestedTaps + 1 : requestedTaps);
-  const iirOrder = Math.max(1, Math.min(4, requestedTaps));
-  const poles = getIirPoles(iirOrder, radius, cutoffRatio, state.filterMode);
-  const zeros = getIirZeros(iirOrder, state.filterMode);
+  const iirOrder = Math.max(1, Math.min(6, requestedTaps));
+  const poles = getIirPoles(iirOrder, radius, cutoffRatio, bandwidthRatio, state.filterMode, state.filterApprox);
+  const zeros = getIirZeros(iirOrder, cutoffRatio, state.filterMode);
   const iirDenominator = getDenominatorFromPoles(poles);
-  const iirNumerator = getNumeratorFromZeros(zeros, state.filterMode);
-  const impulse = isFir
-    ? makeFirImpulse(firTapCount, cutoffRatio, state.filterMode)
-    : makeIirImpulse(iirNumerator, iirDenominator, 64);
+  const iirNumerator = getNumeratorFromZeros(zeros, state.filterMode, cutoffRatio);
+  let impulse = isFir
+    ? makeFirImpulse(firTapCount, cutoffRatio, bandwidthRatio, state.filterMode)
+    : makeIirImpulse(iirNumerator, iirDenominator, 96);
+  impulse = normalizePeakResponse(impulse);
 
   firTaps.min = isFir ? "3" : "1";
-  firTaps.max = isFir ? "31" : "4";
+  firTaps.max = isFir ? "63" : "6";
   if (isFir && requestedTaps < 3) firTaps.value = "3";
-  if (!isFir && requestedTaps > 4) firTaps.value = "4";
+  if (!isFir && requestedTaps > 6) firTaps.value = "6";
   tapControlText.textContent = isFir ? "FIR taps" : "IIR order";
   firTapValue.value = isFir ? firTapCount : iirOrder;
   filterCutoffValue.value = `${cutoffRatio.toFixed(2)}π`;
+  filterBandwidthValue.value = `${bandwidthRatio.toFixed(2)}π`;
+  bandwidthControl.hidden = !["bandpass", "notch"].includes(state.filterMode);
   poleRadiusControl.hidden = isFir;
   poleRadiusValue.value = radius.toFixed(2);
-  stabilityStatus.textContent = isFir || radius < 1 ? "Stable" : "Unstable";
+  stabilityStatus.textContent = `${isFir ? "FIR" : state.filterApprox === "chebyshev" ? "Chebyshev IIR" : "Butterworth IIR"} / ${state.filterMode} / ${isFir ? `${firTapCount} taps` : `order ${iirOrder}`}`;
   stabilityStatus.style.color = isFir || radius < 1 ? "#0f766e" : "#d95d39";
 
   drawFilterImpulse(impulse, isFir);
@@ -904,35 +913,71 @@ function drawFilterLab() {
   drawFilterFrequency(impulse);
 }
 
-function makeFirImpulse(taps, cutoffRatio, mode) {
+function makeFirImpulse(taps, cutoffRatio, bandwidthRatio, mode) {
   const center = (taps - 1) / 2;
-  const normalizedCutoff = cutoffRatio / 2;
-  const lowpass = Array.from({ length: taps }, (_, n) => {
-    const x = n - center;
-    const ideal = Math.abs(x) < 1e-9
-      ? 2 * normalizedCutoff
-      : Math.sin(2 * Math.PI * normalizedCutoff * x) / (Math.PI * x);
-    const window = 0.54 - 0.46 * Math.cos((2 * Math.PI * n) / (taps - 1));
-    return ideal * window;
-  });
-  const lowpassGain = lowpass.reduce((sum, value) => sum + value, 0) || 1;
-  const normalizedLowpass = lowpass.map((value) => value / lowpassGain);
-  if (mode === "lowpass") return normalizedLowpass;
-  return normalizedLowpass.map((value, n) => (n === center ? 1 : 0) - value);
+  const lowpass = (ratio) => {
+    const normalizedCutoff = Math.max(0.001, Math.min(0.499, ratio)) / 2;
+    const tapsRaw = Array.from({ length: taps }, (_, n) => {
+      const x = n - center;
+      const ideal = Math.abs(x) < 1e-9
+        ? 2 * normalizedCutoff
+        : Math.sin(2 * Math.PI * normalizedCutoff * x) / (Math.PI * x);
+      const window = 0.54 - 0.46 * Math.cos((2 * Math.PI * n) / (taps - 1));
+      return ideal * window;
+    });
+    const gain = tapsRaw.reduce((sum, value) => sum + value, 0) || 1;
+    return tapsRaw.map((value) => value / gain);
+  };
+
+  const delta = Array.from({ length: taps }, (_, n) => (n === center ? 1 : 0));
+  if (mode === "lowpass") return lowpass(cutoffRatio);
+  if (mode === "highpass") {
+    const lp = lowpass(cutoffRatio);
+    return lp.map((value, n) => delta[n] - value);
+  }
+
+  const lowEdge = Math.max(0.02, cutoffRatio - bandwidthRatio / 2);
+  const highEdge = Math.min(0.48, cutoffRatio + bandwidthRatio / 2);
+  const band = lowpass(highEdge).map((value, n) => value - lowpass(lowEdge)[n]);
+  if (mode === "bandpass") return band;
+  return band.map((value, n) => delta[n] - value);
 }
 
-function getIirPoles(order, radius, cutoffRatio, mode) {
+function getIirPoles(order, radius, cutoffRatio, bandwidthRatio, mode, approximation) {
   const baseAngle = Math.max(0.08, Math.min(0.48, cutoffRatio)) * Math.PI;
+  const pairRadius = (index) => {
+    if (approximation !== "chebyshev") return radius;
+    const ripple = index % 2 === 0 ? 1.04 : 0.92;
+    return Math.max(0.05, Math.min(1.18, radius * ripple));
+  };
   const orient = (angle) => (mode === "highpass" ? Math.PI - angle : angle);
-  if (order === 1) return [{ re: mode === "highpass" ? -radius : radius, im: 0 }];
-  if (order === 2) return getPolePair(radius, orient(baseAngle));
-  if (order === 3) {
-    const realPole = { re: mode === "highpass" ? -radius : radius, im: 0 };
-    return [realPole, ...getPolePair(radius, orient(baseAngle))];
+
+  if (mode === "bandpass" || mode === "notch") {
+    const spread = Math.max(0.03, bandwidthRatio / 2) * Math.PI;
+    const pairs = Math.max(1, Math.ceil(order / 2));
+    const poles = [];
+    for (let i = 0; i < pairs; i += 1) {
+      const offset = pairs === 1 ? 0 : ((i / (pairs - 1)) - 0.5) * spread;
+      poles.push(...getPolePair(pairRadius(i), Math.max(0.04, Math.min(Math.PI - 0.04, baseAngle + offset))));
+    }
+    return poles.slice(0, Math.max(2, order % 2 === 0 ? order : order + 1));
   }
-  const lowerAngle = Math.max(0.06 * Math.PI, baseAngle * 0.72);
-  const upperAngle = Math.min(0.49 * Math.PI, baseAngle * 1.28);
-  return [...getPolePair(radius, orient(lowerAngle)), ...getPolePair(radius, orient(upperAngle))];
+
+  if (order === 1) return [{ re: mode === "highpass" ? -radius : radius, im: 0 }];
+  if (order === 2) return getPolePair(pairRadius(0), orient(baseAngle));
+  if (order === 3) {
+    const realPole = { re: mode === "highpass" ? -pairRadius(0) : pairRadius(0), im: 0 };
+    return [realPole, ...getPolePair(pairRadius(1), orient(baseAngle))];
+  }
+  const poles = [];
+  const pairs = Math.floor(order / 2);
+  for (let i = 0; i < pairs; i += 1) {
+    const angleScale = 0.72 + (pairs === 1 ? 0 : (0.56 * i) / (pairs - 1));
+    const angle = Math.max(0.06 * Math.PI, Math.min(0.49 * Math.PI, baseAngle * angleScale));
+    poles.push(...getPolePair(pairRadius(i), orient(angle)));
+  }
+  if (order % 2 === 1) poles.unshift({ re: mode === "highpass" ? -pairRadius(pairs) : pairRadius(pairs), im: 0 });
+  return poles;
 }
 
 function getPolePair(radius, angle) {
@@ -961,22 +1006,36 @@ function getDenominatorFromPoles(poles) {
   return coeffs;
 }
 
-function getIirZeros(order, mode) {
+function getIirZeros(order, cutoffRatio, mode) {
+  if (mode === "bandpass") {
+    return Array.from({ length: order }, (_, index) => ({ re: index % 2 === 0 ? 1 : -1, im: 0 }));
+  }
+  if (mode === "notch") {
+    const angle = Math.max(0.08, Math.min(0.48, cutoffRatio)) * Math.PI;
+    const zeros = [];
+    for (let i = 0; i < Math.max(1, Math.ceil(order / 2)); i += 1) zeros.push(...getPolePair(1, angle));
+    return zeros.slice(0, Math.max(2, order % 2 === 0 ? order : order + 1));
+  }
   const zero = mode === "highpass" ? 1 : -1;
   return Array.from({ length: order }, () => ({ re: zero, im: 0 }));
 }
 
-function getNumeratorFromZeros(zeros, mode) {
-  let coeffs = [1];
-  zeros.forEach((zero) => {
-    coeffs = convolveReal(coeffs, [1, -zero.re]);
-  });
-  const gain = coeffs.reduce((sum, value, index) => {
-    const basis = mode === "highpass" && index % 2 === 1 ? -1 : 1;
-    return sum + value * basis;
-  }, 0);
+function getNumeratorFromZeros(zeros, mode, cutoffRatio) {
+  let coeffs = getDenominatorFromPoles(zeros);
+  const reference = mode === "highpass" ? Math.PI : mode === "bandpass" ? cutoffRatio * Math.PI : 0;
+  const gain = evaluateFirAt(coeffs, reference);
   const safeGain = Math.abs(gain) > 1e-9 ? Math.abs(gain) : 1;
   return coeffs.map((value) => value / safeGain);
+}
+
+function evaluateFirAt(coeffs, omega) {
+  let real = 0;
+  let imag = 0;
+  coeffs.forEach((value, n) => {
+    real += value * Math.cos(-omega * n);
+    imag += value * Math.sin(-omega * n);
+  });
+  return Math.sqrt(real * real + imag * imag);
 }
 
 function convolveReal(a, b) {
@@ -1002,6 +1061,12 @@ function makeIirImpulse(numerator, denominator, length) {
     impulse[n] = Math.max(-8, Math.min(8, value));
   }
   return impulse;
+}
+
+function normalizePeakResponse(impulse) {
+  const response = getMagnitudeResponse(impulse, 256);
+  const peak = Math.max(0.001, ...response);
+  return impulse.map((value) => value / peak);
 }
 
 function drawFilterImpulse(impulse, isFir) {
@@ -1806,6 +1871,14 @@ filterModeButtons.forEach((button) => {
   });
 });
 
+filterApproxButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    filterApproxButtons.forEach((item) => item.classList.toggle("active", item === button));
+    state.filterApprox = button.dataset.filterApprox;
+    drawFilterLab();
+  });
+});
+
 [zSignalSelect, zA, zOmega, zSamples].forEach((control) => {
   control.addEventListener("input", drawZTransformLab);
 });
@@ -1813,6 +1886,7 @@ filterModeButtons.forEach((button) => {
 ltiProbe.addEventListener("input", drawLtiLab);
 firTaps.addEventListener("input", drawFilterLab);
 filterCutoff.addEventListener("input", drawFilterLab);
+filterBandwidth.addEventListener("input", drawFilterLab);
 poleRadius.addEventListener("input", drawFilterLab);
 
 windowTypeButtons.forEach((button) => {
