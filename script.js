@@ -57,6 +57,8 @@ const filterCutoffValue = document.querySelector("#filterCutoffValue");
 const filterBandwidth = document.querySelector("#filterBandwidth");
 const filterBandwidthValue = document.querySelector("#filterBandwidthValue");
 const bandwidthControl = document.querySelector("#bandwidthControl");
+const playFilterInput = document.querySelector("#playFilterInput");
+const playFilterOutput = document.querySelector("#playFilterOutput");
 const poleRadiusControl = document.querySelector("#poleRadiusControl");
 const poleRadius = document.querySelector("#poleRadius");
 const poleRadiusValue = document.querySelector("#poleRadiusValue");
@@ -117,6 +119,7 @@ const state = {
   filterFamily: "fir",
   filterMode: "lowpass",
   filterApprox: "butterworth",
+  filterImpulse: [],
   zSignal: "geometric",
   zA: 0.6,
   zOmega: 0.75,
@@ -893,6 +896,7 @@ function drawFilterLab() {
     ? makeFirImpulse(firTapCount, cutoffRatio, bandwidthRatio, state.filterMode)
     : makeIirImpulse(iirNumerator, iirDenominator, 96);
   impulse = normalizePeakResponse(impulse);
+  state.filterImpulse = impulse;
 
   firTaps.min = isFir ? "3" : "1";
   firTaps.max = isFir ? "63" : "6";
@@ -1154,15 +1158,112 @@ function drawFilterFrequency(impulse) {
   const ctx = filterFreqCanvas.getContext("2d");
   const { width, height } = filterFreqCanvas;
   drawGrid(ctx, width, height);
-  const response = getMagnitudeResponse(impulse);
-  const rect = {
+  const response = getComplexResponse(impulse, 220);
+  const magnitudeDb = response.map((point) => Math.max(-80, 20 * Math.log10(Math.max(1e-5, point.magnitude))));
+  const phase = unwrapPhase(response.map((point) => point.phase));
+  const magRect = {
     left: width * 0.12,
-    top: height * 0.14,
+    top: height * 0.12,
     width: width * 0.78,
-    height: height * 0.66,
+    height: height * 0.34,
   };
-  drawFrequencyAxes(ctx, rect, "0", "π");
-  drawResponseCurve(ctx, response, rect, "#2b8a3e", Math.max(...response, 0.001), "|H|", 0);
+  const phaseRect = {
+    left: width * 0.12,
+    top: height * 0.58,
+    width: width * 0.78,
+    height: height * 0.30,
+  };
+
+  drawBodeAxes(ctx, magRect, "Magnitude [dB]", "0 dB", "-80 dB");
+  drawBodeCurve(ctx, magnitudeDb, magRect, "#2b8a3e", -80, 8);
+
+  const phaseMin = Math.min(-Math.PI, Math.floor(Math.min(...phase) / Math.PI) * Math.PI);
+  const phaseMax = Math.max(Math.PI, Math.ceil(Math.max(...phase) / Math.PI) * Math.PI);
+  drawBodeAxes(ctx, phaseRect, "Phase [rad]", `${formatPi(phaseMax)}`, `${formatPi(phaseMin)}`);
+  drawBodeCurve(ctx, phase, phaseRect, "#d95d39", phaseMin, phaseMax);
+
+  ctx.fillStyle = "#5f6b66";
+  ctx.font = "800 16px system-ui";
+  ctx.fillText("0", magRect.left, height - 18);
+  ctx.fillText("π", magRect.left + magRect.width - 10, height - 18);
+  ctx.fillText("normalized frequency", magRect.left + magRect.width * 0.34, height - 18);
+}
+
+function getComplexResponse(signal, bins = 160) {
+  const values = [];
+  for (let bin = 0; bin < bins; bin += 1) {
+    const omega = (Math.PI * bin) / (bins - 1);
+    let real = 0;
+    let imag = 0;
+    signal.forEach((sample, n) => {
+      real += sample * Math.cos(-omega * n);
+      imag += sample * Math.sin(-omega * n);
+    });
+    values.push({
+      magnitude: Math.sqrt(real * real + imag * imag),
+      phase: Math.atan2(imag, real),
+    });
+  }
+  return values;
+}
+
+function unwrapPhase(phases) {
+  const unwrapped = [];
+  let offset = 0;
+  let previous = phases[0] ?? 0;
+  phases.forEach((phase, index) => {
+    if (index > 0) {
+      const delta = phase - previous;
+      if (delta > Math.PI) offset -= 2 * Math.PI;
+      if (delta < -Math.PI) offset += 2 * Math.PI;
+    }
+    unwrapped.push(phase + offset);
+    previous = phase;
+  });
+  return unwrapped;
+}
+
+function drawBodeAxes(ctx, rect, label, topLabel, bottomLabel) {
+  ctx.strokeStyle = "#9aa6a1";
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(rect.left, rect.top, rect.width, rect.height);
+  ctx.strokeStyle = "rgba(154, 166, 161, 0.55)";
+  ctx.lineWidth = 1;
+  for (let i = 1; i < 4; i += 1) {
+    const y = rect.top + (rect.height * i) / 4;
+    ctx.beginPath();
+    ctx.moveTo(rect.left, y);
+    ctx.lineTo(rect.left + rect.width, y);
+    ctx.stroke();
+  }
+  ctx.fillStyle = "#5f6b66";
+  ctx.font = "800 16px system-ui";
+  ctx.fillText(label, rect.left, rect.top - 12);
+  ctx.fillText(topLabel, rect.left + rect.width + 10, rect.top + 6);
+  ctx.fillText(bottomLabel, rect.left + rect.width + 10, rect.top + rect.height);
+}
+
+function drawBodeCurve(ctx, data, rect, color, minValue, maxValue) {
+  const span = Math.max(1e-9, maxValue - minValue);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  data.forEach((value, index) => {
+    const x = rect.left + (index / (data.length - 1)) * rect.width;
+    const clamped = Math.max(minValue, Math.min(maxValue, value));
+    const y = rect.top + rect.height - ((clamped - minValue) / span) * rect.height;
+    if (index === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+}
+
+function formatPi(value) {
+  if (Math.abs(value) < 1e-9) return "0";
+  const ratio = Math.round((value / Math.PI) * 10) / 10;
+  if (ratio === 1) return "π";
+  if (ratio === -1) return "-π";
+  return `${ratio}π`;
 }
 
 function drawWindowLab() {
@@ -1744,6 +1845,58 @@ function playBuffer(buffer) {
   };
 }
 
+function makeFilterDemoSignal(sampleRate = 44100, seconds = 2.2) {
+  const length = Math.floor(sampleRate * seconds);
+  const data = new Float32Array(length);
+  const fadeLength = Math.floor(sampleRate * 0.03);
+  for (let i = 0; i < length; i += 1) {
+    const t = i / sampleRate;
+    const fadeIn = Math.min(1, i / fadeLength);
+    const fadeOut = Math.min(1, (length - i - 1) / fadeLength);
+    const envelope = Math.min(fadeIn, fadeOut);
+    data[i] = envelope * (
+      0.34 * Math.sin(2 * Math.PI * 180 * t) +
+      0.28 * Math.sin(2 * Math.PI * 900 * t) +
+      0.22 * Math.sin(2 * Math.PI * 3200 * t)
+    );
+  }
+  return { data, sampleRate };
+}
+
+function convolveSignal(input, impulse) {
+  const output = new Float32Array(input.length);
+  for (let n = 0; n < input.length; n += 1) {
+    let sum = 0;
+    for (let k = 0; k < impulse.length && k <= n; k += 1) {
+      sum += impulse[k] * input[n - k];
+    }
+    output[n] = sum;
+  }
+  normalizeFloatArray(output, 0.85);
+  return output;
+}
+
+function normalizeFloatArray(data, target = 0.9) {
+  let peak = 0;
+  for (let i = 0; i < data.length; i += 1) peak = Math.max(peak, Math.abs(data[i]));
+  if (peak < 1e-8 || peak <= target) return;
+  const gainValue = target / peak;
+  for (let i = 0; i < data.length; i += 1) data[i] *= gainValue;
+}
+
+function playFloatArray(data, sampleRate) {
+  const context = ensureContext();
+  const buffer = context.createBuffer(1, data.length, sampleRate);
+  buffer.copyToChannel(data, 0);
+  playBuffer(buffer);
+}
+
+function playFilterDemo(filtered) {
+  const demo = makeFilterDemoSignal();
+  const data = filtered ? convolveSignal(demo.data, state.filterImpulse.length ? state.filterImpulse : [1]) : demo.data;
+  playFloatArray(data, demo.sampleRate);
+}
+
 function stopCurrent() {
   if (!state.currentSource) return;
   try {
@@ -1912,6 +2065,8 @@ moduleButtons.forEach((button) => {
 playOriginal.addEventListener("click", () => playBuffer(state.originalBuffer));
 playProcessed.addEventListener("click", () => playBuffer(state.processedBuffer));
 stopAudio.addEventListener("click", stopCurrent);
+playFilterInput.addEventListener("click", () => playFilterDemo(false));
+playFilterOutput.addEventListener("click", () => playFilterDemo(true));
 
 updateControlLabels();
 setEnabled(false);
